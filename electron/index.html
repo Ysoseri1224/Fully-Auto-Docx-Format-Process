@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WriteMaster</title>
+    <style>
+      :root {
+        --bg: #f5efe3;
+        --panel: #fffaf1;
+        --ink: #1f2937;
+        --accent: #8c3f2b;
+        --line: #d9c8aa;
+      }
+      body {
+        margin: 0;
+        font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+        background: radial-gradient(circle at top left, #fff7e5, var(--bg));
+        color: var(--ink);
+      }
+      .wrap {
+        max-width: 920px;
+        margin: 32px auto;
+        padding: 24px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 16px 40px rgba(84, 55, 20, 0.08);
+        padding: 24px;
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 30px;
+      }
+      p {
+        line-height: 1.7;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 140px 1fr auto;
+        gap: 12px;
+        align-items: center;
+      }
+      .grid + .grid {
+        margin-top: 12px;
+      }
+      input, select, button, textarea {
+        font: inherit;
+      }
+      input, select {
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: white;
+      }
+      button {
+        padding: 10px 16px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+      }
+      pre {
+        white-space: pre-wrap;
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        padding: 14px;
+        min-height: 120px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="panel">
+        <h1>WriteMaster</h1>
+        <p>同一套核心逻辑，同时服务 CLI、Node 单文件、Electron 和 Rust 包装层。</p>
+        <div class="grid">
+          <label for="mode">模式</label>
+          <select id="mode">
+            <option value="md">Markdown -> DOCX</option>
+            <option value="docx">DOCX -> review DOCX</option>
+          </select>
+          <span></span>
+        </div>
+        <div class="grid">
+          <label for="inputPath">输入文件</label>
+          <input id="inputPath" placeholder="选择 .md 或 .docx 文件" />
+          <button id="chooseFile">选择文件</button>
+        </div>
+        <div class="grid">
+          <label for="suffix">输出后缀</label>
+          <input id="suffix" placeholder="留空则走默认命名规则" />
+          <span></span>
+        </div>
+        <div class="grid">
+          <label for="masterPath">母版 DOCX</label>
+          <input id="masterPath" placeholder="留空则使用仓库自带 review-master.docx" />
+          <span></span>
+        </div>
+        <div class="grid">
+          <label for="pandocPath">Pandoc 路径</label>
+          <input id="pandocPath" placeholder="只在 Markdown 模式下需要；留空自动探测" />
+          <span></span>
+        </div>
+        <div class="grid">
+          <label for="backupMdPath">备用 Markdown</label>
+          <input id="backupMdPath" placeholder="可选，用于表格恢复" />
+          <span></span>
+        </div>
+        <div class="grid" style="margin-top: 20px;">
+          <span></span>
+          <span></span>
+          <button id="run">开始处理</button>
+        </div>
+        <pre id="output"></pre>
+      </div>
+    </div>
+    <script src="./renderer.js"></script>
+  </body>
+  </html>

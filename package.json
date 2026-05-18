@@ -1,0 +1,24 @@
+{
+  "name": "writemaster",
+  "version": "0.1.0",
+  "description": "Unified DOCX formatting workflow with CLI, Node single-file, Electron, and Rust wrappers.",
+  "type": "commonjs",
+  "bin": {
+    "writemaster": "src/cli.js"
+  },
+  "main": "electron/main.js",
+  "scripts": {
+    "cli": "node src/cli.js --help",
+    "bundle": "node scripts/build-single-file.js",
+    "electron": "electron .",
+    "rust:build": "cargo build --manifest-path rust-wrapper/Cargo.toml --release"
+  },
+  "dependencies": {
+    "pizzip": "^3.2.0",
+    "xmldom": "^0.6.0"
+  },
+  "devDependencies": {
+    "electron": "^37.0.0",
+    "esbuild": "^0.25.5"
+  }
+}
