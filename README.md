@@ -117,6 +117,14 @@ npm run rust:build
 - `electron/`
 - `rust-wrapper/`
 
+## 首次推送
+
+如果本地已经完成首批提交，可直接执行：
+
+```powershell
+git push -u origin main
+```
+
 ## 当前实现策略
 
 - 真正复杂的规则仍然集中在 Node 核心
