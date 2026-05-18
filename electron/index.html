@@ -77,12 +77,12 @@
     <div class="wrap">
       <div class="panel">
         <h1>WriteMaster</h1>
-        <p>同一套核心逻辑，同时服务 CLI、Node 单文件、Electron 和 Rust 包装层。</p>
+        <p>选择输入模式、输入文件和可选输出后缀，然后执行当前文档处理流程。</p>
         <div class="grid">
           <label for="mode">模式</label>
           <select id="mode">
-            <option value="md">Markdown -> DOCX</option>
-            <option value="docx">DOCX -> review DOCX</option>
+            <option value="md">Markdown 转 DOCX</option>
+            <option value="docx">DOCX 整理输出</option>
           </select>
           <span></span>
         </div>
@@ -93,22 +93,22 @@
         </div>
         <div class="grid">
           <label for="suffix">输出后缀</label>
-          <input id="suffix" placeholder="留空则走默认命名规则" />
+          <input id="suffix" placeholder="留空则使用默认命名" />
           <span></span>
         </div>
         <div class="grid">
           <label for="masterPath">母版 DOCX</label>
-          <input id="masterPath" placeholder="留空则使用仓库自带 review-master.docx" />
+          <input id="masterPath" placeholder="留空则使用默认母版" />
           <span></span>
         </div>
         <div class="grid">
           <label for="pandocPath">Pandoc 路径</label>
-          <input id="pandocPath" placeholder="只在 Markdown 模式下需要；留空自动探测" />
+          <input id="pandocPath" placeholder="Markdown 模式可选；留空自动探测" />
           <span></span>
         </div>
         <div class="grid">
           <label for="backupMdPath">备用 Markdown</label>
-          <input id="backupMdPath" placeholder="可选，用于表格恢复" />
+          <input id="backupMdPath" placeholder="可选；用于表格恢复" />
           <span></span>
         </div>
         <div class="grid" style="margin-top: 20px;">

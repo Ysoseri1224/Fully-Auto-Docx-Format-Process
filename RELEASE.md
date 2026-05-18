@@ -2,26 +2,27 @@
 
 ## v0.1.0
 
-`WriteMaster` 首个可公开整理版本，目标是把现有教材整理工作流收束为可分发工具。
+首个可公开整理版本，提供同一套核心流程的多入口形态。
 
-### Included
+### 本版内容
 
 - `writemaster --md <file.md> [name]`
 - `writemaster --docx <file.docx> [name]`
-- Shared Node review core
-- Bundled Node single-file build
-- Electron shell scaffold
-- Rust wrapper scaffold
+- Node review 核心
+- Node 单文件 bundle
+- Electron 桌面入口
+- Rust 包装层代码
 
-### Verified Locally
+### 已完成本地验证
 
-- Node CLI help output
-- Node single-file bundle build
-- CLI smoke export
-- Bundle smoke export
+- Node CLI 帮助输出
+- Node 单文件 bundle 构建
+- CLI smoke 导出
+- bundle smoke 导出
+- Electron 本地启动
 
-### Known Limitations
+### 当前限制
 
 - Rust build on Windows requires MSVC Build Tools with `link.exe`
-- Electron shell is scaffolded and runnable locally, but not yet packaged as an installer
-- The current formatting logic is optimized for the existing textbook workflow and template assumptions
+- Electron 当前仅验证本地启动，尚未打包安装器
+- 当前格式规则仍以现有教材模板与工作流为主要适配目标
