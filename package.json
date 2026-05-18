@@ -22,7 +22,9 @@
     },
     "files": [
       "electron/**/*",
+      "src/**/*",
       "dist/writemaster.single.cjs",
+      "templates/**/*",
       "package.json"
     ],
     "win": {
