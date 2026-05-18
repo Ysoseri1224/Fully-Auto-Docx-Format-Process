@@ -11,7 +11,33 @@
     "cli": "node src/cli.js --help",
     "bundle": "node scripts/build-single-file.js",
     "electron": "electron .",
+    "electron:portable": "npm run bundle && .\\node_modules\\.bin\\electron-builder.cmd --win portable",
     "rust:build": "cargo build --manifest-path rust-wrapper/Cargo.toml --release"
+  },
+  "build": {
+    "appId": "com.ysoseri1224.writemaster",
+    "productName": "WriteMaster",
+    "directories": {
+      "output": "electron-dist"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/writemaster.single.cjs",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "WriteMaster-portable-${version}.exe"
+    }
   },
   "dependencies": {
     "pizzip": "^3.2.0",
@@ -19,6 +45,7 @@
   },
   "devDependencies": {
     "electron": "^37.0.0",
+    "electron-builder": "^26.0.12",
     "esbuild": "^0.25.5"
   }
 }
