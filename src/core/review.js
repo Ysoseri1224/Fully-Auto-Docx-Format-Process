@@ -14,6 +14,7 @@ const MASTER_CANDIDATES = [
 const DEFAULT_MASTER = MASTER_CANDIDATES.find((candidate) => fs.existsSync(candidate)) || MASTER_CANDIDATES[0];
 
 let cachedEmbeddedMasterPath = null;
+let cachedExternalizedMasterPath = null;
 
 function ensureEmbeddedMasterFile() {
   if (!embeddedMasterBase64) return null;
@@ -27,9 +28,22 @@ function ensureEmbeddedMasterFile() {
   return fp;
 }
 
+function externalizeMasterFile(sourcePath) {
+  if (!sourcePath || !fs.existsSync(sourcePath)) return null;
+  if (!sourcePath.includes('app.asar')) return sourcePath;
+  if (cachedExternalizedMasterPath && fs.existsSync(cachedExternalizedMasterPath)) return cachedExternalizedMasterPath;
+  const hash = crypto.createHash('sha1').update(fs.readFileSync(sourcePath)).digest('hex').slice(0, 12);
+  const dir = path.join(os.tmpdir(), 'writemaster');
+  const fp = path.join(dir, `review-master-asar-${hash}.docx`);
+  fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(fp)) fs.writeFileSync(fp, fs.readFileSync(sourcePath));
+  cachedExternalizedMasterPath = fp;
+  return fp;
+}
+
 function resolveMasterPath(masterPath) {
-  if (masterPath && fs.existsSync(masterPath)) return masterPath;
-  if (!masterPath && fs.existsSync(DEFAULT_MASTER)) return DEFAULT_MASTER;
+  if (masterPath && fs.existsSync(masterPath)) return externalizeMasterFile(masterPath);
+  if (!masterPath && fs.existsSync(DEFAULT_MASTER)) return externalizeMasterFile(DEFAULT_MASTER);
   const embedded = ensureEmbeddedMasterFile();
   if (embedded) return embedded;
   return masterPath || DEFAULT_MASTER;
