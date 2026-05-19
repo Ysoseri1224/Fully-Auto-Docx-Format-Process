@@ -30,12 +30,24 @@
     "win": {
       "target": [
         {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
           "target": "portable",
           "arch": [
             "x64"
           ]
         }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "WriteMaster-setup-${version}.${ext}"
     },
     "portable": {
       "artifactName": "WriteMaster-portable-${version}.exe"

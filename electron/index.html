@@ -284,10 +284,10 @@
         grid-template-rows: 260px 1fr;
         gap: 16px;
       }
-      .inspector-panel { display: none; }
-      .inspector-panel.active { display: block; }
-      .summary-bottom { display: none; }
-      .summary-bottom.active { display: block; }
+      .inspector-panel { display: none; overflow: auto; min-height: 0; }
+      .inspector-panel.active { display: flex; flex-direction: column; }
+      .summary-bottom { display: none; overflow: auto; min-height: 0; }
+      .summary-bottom.active { display: flex; flex-direction: column; }
       /* Block preview styles */
       .block {
         border-radius: 8px;

@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build WriteMaster
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build single-file bundle
+        run: npm run bundle
+
+      - name: Build Electron (setup + portable)
+        run: npx electron-builder --win --publish=never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Rust wrapper
+        run: cargo build --manifest-path rust-wrapper/Cargo.toml --release
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p release-artifacts
+          cp electron-dist/WriteMaster-setup-*.exe release-artifacts/ 2>/dev/null || true
+          cp electron-dist/WriteMaster-portable-*.exe release-artifacts/ 2>/dev/null || true
+          cp rust-wrapper/target/release/writemaster-rs.exe release-artifacts/ 2>/dev/null || true
+          ls -la release-artifacts/
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-artifacts/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
