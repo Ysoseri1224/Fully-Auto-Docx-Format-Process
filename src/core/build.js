@@ -29,6 +29,8 @@ function buildFromMarkdown(options) {
     mdPath,
     outputPath,
     masterPath,
+    masterId,
+    customMasterPath,
     pandocPath,
     tempPath,
     backupMdPath,
@@ -36,7 +38,11 @@ function buildFromMarkdown(options) {
   } = options;
 
   if (!mdPath) throw new Error('mdPath is required');
-  const resolvedMaster = resolveMasterPath(masterPath);
+  const resolvedMaster = resolveMasterPath({
+    masterId,
+    customPath: customMasterPath || masterPath,
+    masterPath,
+  });
   const resolvedPandoc = resolvePandocPath(pandocPath);
   const resolvedMd = path.resolve(mdPath);
   const resolvedOutput = path.resolve(outputPath);
@@ -64,9 +70,12 @@ function buildFromMarkdown(options) {
     return processReview({
       inputPath: resolvedTemp,
       outputPath: resolvedOutput,
+      masterId,
+      customMasterPath: resolvedMaster,
       masterPath: resolvedMaster,
       mdPath: resolvedMd,
       backupMdPath: resolvedBackupMd,
+      profile: options.profile,
     });
   } finally {
     if (!keepTemp && fs.existsSync(resolvedTemp)) fs.unlinkSync(resolvedTemp);

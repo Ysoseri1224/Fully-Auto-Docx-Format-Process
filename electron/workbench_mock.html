@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WriteMaster Workbench Mock</title>
+    <style>
+      :root {
+        --bg: #f3efe7;
+        --panel: #fffaf2;
+        --panel-2: #ffffff;
+        --line: #ddd2bf;
+        --ink: #1e293b;
+        --muted: #6b7280;
+        --accent: #9a4d2f;
+        --accent-soft: #f3e5d7;
+        --highlight: #d8e4ff;
+        --blue-soft: #eef1ff;
+        --blue-line: #c8d2ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, #fff7e8 0, transparent 24%),
+          linear-gradient(180deg, #faf6ef 0%, var(--bg) 100%);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 268px minmax(640px, 1fr) 420px;
+        height: 100vh;
+      }
+
+      .sidebar,
+      .main,
+      .inspector {
+        min-height: 0;
+      }
+
+      .sidebar {
+        border-right: 1px solid var(--line);
+        background: rgba(255, 250, 242, 0.92);
+        padding: 18px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .brand {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .action {
+        border: 1px solid #cfc3b1;
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-radius: 18px;
+        padding: 16px 18px;
+        font-size: 20px;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .nav,
+      .cards,
+      .config-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .nav-item,
+      .card,
+      .config-item,
+      .preset-item {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px 16px;
+        cursor: pointer;
+      }
+
+      .nav-item.active,
+      .card.active,
+      .config-item.active,
+      .preset-item.active {
+        background: var(--blue-soft);
+        border-color: var(--blue-line);
+      }
+
+      .nav-title {
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .nav-sub {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .section-title {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #7c6958;
+      }
+
+      .card-title,
+      .config-name,
+      .preset-name {
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .card-sub,
+      .config-meta,
+      .preset-meta {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .spacer {
+        flex: 1;
+      }
+
+      .sidebar-footer {
+        display: flex;
+        gap: 10px;
+      }
+
+      .icon-btn {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+      }
+
+      .main {
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        background: #fbf9f5;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(8px);
+      }
+
+      .back {
+        font-size: 26px;
+      }
+
+      .doc-title {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .tag {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 13px;
+        background: white;
+      }
+
+      .tabbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tablist {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .tab {
+        padding: 8px 14px;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        color: var(--muted);
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .tab.active {
+        background: white;
+        border-color: var(--line);
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .content {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .view {
+        display: none;
+        height: 100%;
+      }
+
+      .view.active {
+        display: block;
+      }
+
+      .preview-wrap {
+        overflow: auto;
+        padding: 24px 0 36px;
+        height: 100%;
+      }
+
+      .page {
+        width: 780px;
+        min-height: 1080px;
+        margin: 0 auto;
+        background: white;
+        box-shadow: 0 12px 36px rgba(58, 42, 28, 0.12);
+        border: 1px solid #e5e0d8;
+        padding: 72px 82px;
+      }
+
+      .block {
+        border-radius: 8px;
+        padding: 4px 8px;
+        margin: 6px -8px;
+      }
+
+      .block.selected {
+        background: var(--highlight);
+        outline: 1px solid #b8c8ff;
+      }
+
+      .h1 {
+        font-size: 26px;
+        font-weight: 700;
+        text-align: center;
+        margin: 18px 0 30px;
+      }
+
+      .h2 {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 16px 0 18px;
+      }
+
+      .h3 {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 16px 0 12px;
+      }
+
+      .p {
+        font-size: 15px;
+        line-height: 1.9;
+        text-indent: 2em;
+        margin: 8px 0;
+      }
+
+      .note {
+        background: #f7f4ee;
+        border-left: 4px solid #d2b48c;
+        padding: 10px 14px;
+        margin: 14px 0;
+        font-size: 14px;
+        line-height: 1.8;
+      }
+
+      .caption {
+        text-align: center;
+        font-size: 13px;
+        color: #4b5563;
+        margin: 16px 0;
+      }
+
+      .statusbar {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 18px;
+        border-top: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.8);
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .inspector {
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        border-left: 1px solid var(--line);
+        background: #f7f2ea;
+      }
+
+      .inspector-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .seg {
+        display: inline-flex;
+        border-radius: 12px;
+        background: #ece8df;
+        padding: 4px;
+        gap: 4px;
+      }
+
+      .seg button,
+      .seg span {
+        padding: 6px 12px;
+        border-radius: 10px;
+        color: var(--muted);
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .seg .active {
+        background: white;
+        color: #2563eb;
+        font-weight: 700;
+      }
+
+      .inspector-body {
+        overflow: auto;
+        padding: 16px;
+        display: grid;
+        grid-template-rows: 260px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px;
+      }
+
+      .panel h3 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+
+      .json {
+        height: 100%;
+        overflow: auto;
+        background: #fbfbfb;
+        border: 1px solid #ececec;
+        border-radius: 12px;
+        padding: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+
+      .style-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .style-item {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: #fffdf9;
+      }
+
+      .style-item.active {
+        background: #eef4ff;
+        border-color: #b9cbff;
+      }
+
+      .style-name {
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .style-meta {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .rule-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .chip {
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #fff;
+        font-size: 12px;
+      }
+
+      .landing,
+      .config-page,
+      .preview-page {
+        height: 100%;
+        overflow: auto;
+        padding: 24px;
+      }
+
+      .hero-card,
+      .config-card,
+      .preview-card,
+      .result-card {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: 0 10px 30px rgba(58, 42, 28, 0.08);
+      }
+
+      .hero-grid,
+      .config-grid,
+      .result-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 18px;
+      }
+
+      .tool-card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 16px;
+        background: #fffdf8;
+      }
+
+      .tool-title {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .tool-desc {
+        margin-top: 8px;
+        font-size: 14px;
+        line-height: 1.7;
+        color: var(--muted);
+      }
+
+      .tool-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .btn {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: white;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+
+      .btn.primary {
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-color: #cfb596;
+      }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .field-grid + .field-grid {
+        margin-top: 12px;
+      }
+
+      .field-grid input,
+      .field-grid select {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: white;
+      }
+
+      .result-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 18px;
+      }
+
+      .mini-page {
+        background: white;
+        border: 1px solid #e5e0d8;
+        box-shadow: 0 8px 24px rgba(58, 42, 28, 0.08);
+        min-height: 720px;
+        padding: 52px 60px;
+      }
+
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">WriteMaster</div>
+        <button class="action" data-view-target="landing">+ 新建模板提取</button>
+
+        <div class="nav">
+          <div class="nav-item active" data-view-target="template-view">
+            <div class="nav-title">模板提取</div>
+            <div class="nav-sub">从母版文档抽取样式与编号规则</div>
+          </div>
+          <div class="nav-item" data-view-target="result-view">
+            <div class="nav-title">结果预览</div>
+            <div class="nav-sub">应用配置并查看转换结果</div>
+          </div>
+          <div class="nav-item" data-view-target="config-view">
+            <div class="nav-title">模板配置</div>
+            <div class="nav-sub">查看、导入、导出 profile</div>
+          </div>
+        </div>
+
+        <div class="section-title">现有模板配置</div>
+        <div class="cards">
+          <div class="card active" data-view-target="config-view">
+            <div class="card-title">mysql-textbook-liu</div>
+            <div class="card-sub">当前项目模板配置</div>
+          </div>
+          <div class="card" data-view-target="config-view">
+            <div class="card-title">general-manual-draft</div>
+            <div class="card-sub">通用教材草案配置</div>
+          </div>
+        </div>
+
+        <div class="section-title">最近文件</div>
+        <div class="cards">
+          <div class="card active" data-view-target="template-view">
+            <div class="card-title">第10章初稿_全批注+主要公式.docx</div>
+            <div class="card-sub">模板提取任务</div>
+          </div>
+          <div class="card" data-view-target="result-view">
+            <div class="card-title">四五六章.md</div>
+            <div class="card-sub">结果预览任务</div>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="sidebar-footer">
+          <button class="icon-btn"></button>
+          <button class="icon-btn"></button>
+          <button class="icon-btn"></button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="toolbar">
+          <div class="back">‹</div>
+          <div class="doc-title" id="toolbarTitle">第10章初稿_全批注+主要公式.docx</div>
+          <div class="tag" id="modeTag">模板提取模式</div>
+          <div class="tag" id="typeTag">母版文档</div>
+        </div>
+
+        <div class="tabbar">
+          <div class="tablist" id="mainTabs">
+            <button class="tab active" data-view-target="template-view">原始模板视图</button>
+            <button class="tab" data-view-target="result-view">结果预览</button>
+            <button class="tab" data-view-target="config-view">Profile 配置</button>
+            <button class="tab" data-view-target="landing">工作台首页</button>
+          </div>
+          <div class="tablist">
+            <div class="tag">应用现有模板配置</div>
+            <div class="tag">mysql-textbook-liu ▾</div>
+          </div>
+        </div>
+
+        <div class="content">
+          <section class="view active" id="template-view">
+            <div class="preview-wrap">
+              <div class="page">
+                <div class="block h1">第10章 热裂数值模拟</div>
+                <div class="block h2 selected">10.1 模拟基础理论与方法</div>
+                <div class="block p">铝合金热裂的形成涉及凝固过程中温度场、应力场、流场和微观组织演变的复杂耦合，是典型的跨尺度、多物理场问题。热裂发生在固相线附近的高温糊状区，直接观测晶界液膜的破裂过程是困难的。</div>
+                <div class="block p">随着计算机技术的发展，数值模拟是研究热裂问题的重要方法。在教学中，这一类段落通常会被归入正文样式候选，并进一步用于识别字号、行距、首行缩进等格式规范。</div>
+                <div class="block h3">10.1.1 凝固过程数值模拟原理</div>
+                <div class="block p">一、热量传递的基本方程</div>
+                <div class="block p">铝合金凝固过程的数值模拟以传热学理论为基础，其任务是求解描述热量传递与相变的控制方程。对于存在固-液相变的铸造凝固过程，热量传递遵循偏微分控制方程。</div>
+                <div class="block note"><strong>说明：</strong> 当前选中段落可右击并标记为“二级标题候选”或存为新的临时样式。</div>
+                <div class="block caption">图 10-1 凝固过程数值模拟原理示意</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" id="landing">
+            <div class="landing">
+              <div class="hero-card">
+                <div class="tool-title">工作台首页</div>
+                <div class="tool-desc">这里展示三类主要入口：模板提取、结果预览和模板配置管理。当前是静态原型，按钮用于切换页面状态，不执行真实任务。</div>
+                <div class="hero-grid">
+                  <div class="tool-card">
+                    <div class="tool-title">模板提取</div>
+                    <div class="tool-desc">上传母版 DOCX，查看原始预览、结构 JSON 和临时样式候选，并通过右击或选择操作建立 profile。</div>
+                    <div class="tool-actions">
+                      <button class="btn primary" data-view-target="template-view">进入模板提取</button>
+                      <button class="btn">上传母版</button>
+                    </div>
+                  </div>
+                  <div class="tool-card">
+                    <div class="tool-title">结果预览</div>
+                    <div class="tool-desc">选择 Markdown 或目标 DOCX，套用已有模板配置，并查看转换后的页面预览与命中规则。</div>
+                    <div class="tool-actions">
+                      <button class="btn primary" data-view-target="result-view">进入结果预览</button>
+                      <button class="btn">选择输入文件</button>
+                    </div>
+                  </div>
+                  <div class="tool-card">
+                    <div class="tool-title">模板配置</div>
+                    <div class="tool-desc">查看当前模板 profile、内置模板、临时样式映射和规则字段，导入导出配置。</div>
+                    <div class="tool-actions">
+                      <button class="btn primary" data-view-target="config-view">查看模板配置</button>
+                      <button class="btn">导入 profile</button>
+                    </div>
+                  </div>
+                  <div class="tool-card">
+                    <div class="tool-title">现有模板配置</div>
+                    <div class="tool-desc">从已有模板配置开始，不重新提取；适合同一类教材、专著、论文反复使用。</div>
+                    <div class="tool-actions">
+                      <button class="btn">选择 mysql-textbook-liu</button>
+                      <button class="btn">选择其他配置</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" id="result-view">
+            <div class="preview-page">
+              <div class="preview-card">
+                <div class="tool-title">结果预览</div>
+                <div class="tool-desc">这里模拟“Markdown / DOCX 应用模板配置后的结果视图”。左侧是预览页，右侧是命中规则和当前 profile 摘要。</div>
+                <div class="result-grid" style="margin-top: 18px;">
+                  <div class="tool-card">
+                    <div class="field-grid">
+                      <label>输入来源</label>
+                      <input value="四五六章.md" />
+                    </div>
+                    <div class="field-grid">
+                      <label>模板配置</label>
+                      <select>
+                        <option>mysql-textbook-liu</option>
+                        <option>general-manual-draft</option>
+                      </select>
+                    </div>
+                    <div class="field-grid">
+                      <label>输出文件名</label>
+                      <input value="四五六章_review.docx" />
+                    </div>
+                    <div class="tool-actions">
+                      <button class="btn primary">生成预览</button>
+                      <button class="btn">导出 DOCX</button>
+                    </div>
+                  </div>
+                  <div class="tool-card">
+                    <div class="tool-title">当前命中</div>
+                    <div class="tool-desc">正文、二级标题、图题、提示说明、二级编号、圆圈编号均已命中配置。此处将来可显示失败规则和冲突提示。</div>
+                  </div>
+                </div>
+                <div class="result-layout" style="margin-top: 18px;">
+                  <div class="mini-page">
+                    <div class="block h1">应用篇</div>
+                    <div class="block h2">项目四 创建与管理数据库、表和数据</div>
+                    <div class="block h3">6.1 数据库的创建与查看</div>
+                    <div class="block p">在 MySQL 中，使用 CREATE DATABASE 语句创建数据库。其基本语法格式如下。</div>
+                    <div class="block note"><strong>提示：</strong> 这里演示的是应用模板配置后的结果块，后续可支持与模板视图并排对比。</div>
+                    <div class="block caption">图 6-1 CREATE DATABASE 执行结果</div>
+                  </div>
+                  <div class="stack">
+                    <div class="panel">
+                      <h3>命中规则</h3>
+                      <div class="rule-chip-row">
+                        <span class="chip">body -> af</span>
+                        <span class="chip">heading2 -> a0</span>
+                        <span class="chip">heading3 -> a</span>
+                        <span class="chip">note -> af9</span>
+                        <span class="chip">caption -> af5</span>
+                      </div>
+                    </div>
+                    <div class="panel">
+                      <h3>结果检查</h3>
+                      <div class="muted">这里将来可显示：编号串号、表格恢复、图题样式、软换行残留、Pandoc 转换丢失等问题。</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" id="config-view">
+            <div class="config-page">
+              <div class="config-card">
+                <div class="tool-title">模板配置</div>
+                <div class="tool-desc">这里展示模板 profile 的核心字段、临时样式映射、编号定义以及表格与提示说明规则。当前是静态原型。</div>
+                <div class="config-grid">
+                  <div class="panel">
+                    <h3>基本信息</h3>
+                    <div class="field-grid">
+                      <label>配置名称</label>
+                      <input value="mysql-textbook-liu" />
+                    </div>
+                    <div class="field-grid">
+                      <label>来源母版</label>
+                      <input value="MySQL数据库任务驱动式教程-刘.docx" />
+                    </div>
+                    <div class="field-grid">
+                      <label>适用类型</label>
+                      <select>
+                        <option>教材</option>
+                        <option>专著</option>
+                        <option>论文</option>
+                      </select>
+                    </div>
+                    <div class="tool-actions" style="margin-top: 14px;">
+                      <button class="btn primary">保存配置</button>
+                      <button class="btn">导出 JSON</button>
+                    </div>
+                  </div>
+
+                  <div class="panel">
+                    <h3>样式映射</h3>
+                    <div class="config-list">
+                      <div class="config-item active">
+                        <div class="config-name">body → af</div>
+                        <div class="config-meta">正文样式</div>
+                      </div>
+                      <div class="config-item">
+                        <div class="config-name">heading1 → a3</div>
+                        <div class="config-meta">正文一级标题样式</div>
+                      </div>
+                      <div class="config-item">
+                        <div class="config-name">heading2 → a0</div>
+                        <div class="config-meta">正文二级标题样式</div>
+                      </div>
+                      <div class="config-item">
+                        <div class="config-name">heading3 → a</div>
+                        <div class="config-meta">正文三级标题样式</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel">
+                    <h3>编号定义</h3>
+                    <div class="config-list">
+                      <div class="config-item">
+                        <div class="config-name">decimalTop → 30</div>
+                        <div class="config-meta">%1.</div>
+                      </div>
+                      <div class="config-item">
+                        <div class="config-name">parenLevel → 31</div>
+                        <div class="config-meta">（%1）</div>
+                      </div>
+                      <div class="config-item">
+                        <div class="config-name">circledLevel → 10</div>
+                        <div class="config-meta">①②③</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel">
+                    <h3>特殊规则</h3>
+                    <div class="config-list">
+                      <div class="config-item">
+                        <div class="config-name">说明 / 提示 / 注意</div>
+                        <div class="config-meta">前缀独立成段，前缀加粗</div>
+                      </div>
+                      <div class="config-item">
+                        <div class="config-name">例题 SQL</div>
+                        <div class="config-meta">正文样式，无底纹</div>
+                      </div>
+                      <div class="config-item">
+                        <div class="config-name">格式示例型 SQL</div>
+                        <div class="config-meta">代码样式，保留底纹</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="statusbar">
+          <span id="statusLeft">页 13 / 23</span>
+          <span id="statusMid">当前节点：paragraph / heading-2 candidate</span>
+          <span id="statusRight">缩放 66%</span>
+        </div>
+      </main>
+
+      <aside class="inspector">
+        <div class="inspector-head">
+          <div style="font-weight: 700;">结构与规则</div>
+          <div class="seg" id="rightTopTabs">
+            <button class="active" data-panel-target="json-panel">JSON</button>
+            <button data-panel-target="style-panel">样式</button>
+            <button data-panel-target="profile-panel">Profile</button>
+          </div>
+        </div>
+
+        <div class="inspector-head" style="padding-top: 10px; padding-bottom: 10px;">
+          <div class="seg">
+            <span class="active">节点信息</span>
+            <span>临时样式</span>
+            <span>规则摘要</span>
+          </div>
+        </div>
+
+        <div class="inspector-body">
+          <div class="panel inspector-panel active" id="json-panel">
+            <h3>当前节点 JSON</h3>
+            <div class="json">
+{
+  "id": "p-0012",
+  "type": "paragraph",
+  "role": "heading2_candidate",
+  "text": "10.1 模拟基础理论与方法",
+  "styleSource": {
+    "styleId": "Heading2",
+    "styleName": "Heading 2"
+  },
+  "format": {
+    "fontFamily": "黑体",
+    "fontSizePt": 16,
+    "bold": true,
+    "align": "left"
+  },
+  "location": {
+    "pageIndex": 12,
+    "order": 1
+  }
+}
+            </div>
+          </div>
+
+          <div class="panel inspector-panel" id="style-panel" style="display:none;">
+            <h3>临时样式</h3>
+            <div class="style-list">
+              <div class="style-item active">
+                <div class="style-name">tmp_heading_02</div>
+                <div class="style-meta">候选角色：二级标题 / 黑体 / 16pt / 粗体 / 左对齐</div>
+                <div class="rule-chip-row">
+                  <span class="chip">映射目标：heading2</span>
+                  <span class="chip">样式候选：a0</span>
+                  <span class="chip">编号：decimal section</span>
+                </div>
+              </div>
+              <div class="style-item">
+                <div class="style-name">tmp_body_01</div>
+                <div class="style-meta">候选角色：正文 / 宋体 / 首行缩进 2 字 / 1.5 倍行距</div>
+              </div>
+              <div class="style-item">
+                <div class="style-name">tmp_note_01</div>
+                <div class="style-meta">候选角色：提示说明 / 前缀单独加粗</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel inspector-panel" id="profile-panel" style="display:none;">
+            <h3>Profile 摘要</h3>
+            <div class="style-list">
+              <div class="style-item">
+                <div class="style-name">body → af</div>
+                <div class="style-meta">正文样式</div>
+              </div>
+              <div class="style-item">
+                <div class="style-name">heading2 → a0</div>
+                <div class="style-meta">正文二级标题样式</div>
+              </div>
+              <div class="style-item">
+                <div class="style-name">note → af9</div>
+                <div class="style-meta">提示说明样式</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>右击菜单预期</h3>
+            <div class="rule-chip-row">
+              <span class="chip">设为正文</span>
+              <span class="chip">设为一级标题</span>
+              <span class="chip">设为二级标题</span>
+              <span class="chip">设为三级标题</span>
+              <span class="chip">设为图题</span>
+              <span class="chip">设为代码块</span>
+              <span class="chip">存为临时样式</span>
+              <span class="chip">合并到已有临时样式</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <script>
+      const navButtons = document.querySelectorAll('[data-view-target]');
+      const views = document.querySelectorAll('.view');
+      const tabs = document.querySelectorAll('.tab[data-view-target]');
+      const navItems = document.querySelectorAll('.nav-item[data-view-target]');
+      const cards = document.querySelectorAll('.card[data-view-target]');
+
+      const viewMeta = {
+        'template-view': {
+          title: '第10章初稿_全批注+主要公式.docx',
+          mode: '模板提取模式',
+          type: '母版文档',
+          statusLeft: '页 13 / 23',
+          statusMid: '当前节点：paragraph / heading-2 candidate',
+          statusRight: '缩放 66%'
+        },
+        'result-view': {
+          title: '四五六章.md',
+          mode: '结果预览模式',
+          type: 'Markdown 输入',
+          statusLeft: '预览结果',
+          statusMid: '当前配置：mysql-textbook-liu',
+          statusRight: '输出：review.docx'
+        },
+        'config-view': {
+          title: 'mysql-textbook-liu',
+          mode: '模板配置模式',
+          type: 'Profile 配置',
+          statusLeft: '模板配置',
+          statusMid: '字段：styles / numbering / patterns / tableRules',
+          statusRight: '状态：草案'
+        },
+        'landing': {
+          title: 'WriteMaster Workbench',
+          mode: '工作台首页',
+          type: '静态原型',
+          statusLeft: '首页',
+          statusMid: '当前仅演示页面结构与流转',
+          statusRight: '无真实任务'
+        }
+      };
+
+      const toolbarTitle = document.getElementById('toolbarTitle');
+      const modeTag = document.getElementById('modeTag');
+      const typeTag = document.getElementById('typeTag');
+      const statusLeft = document.getElementById('statusLeft');
+      const statusMid = document.getElementById('statusMid');
+      const statusRight = document.getElementById('statusRight');
+
+      function activateView(viewId) {
+        views.forEach((view) => {
+          view.classList.toggle('active', view.id === viewId);
+        });
+
+        tabs.forEach((tab) => {
+          tab.classList.toggle('active', tab.dataset.viewTarget === viewId);
+        });
+
+        navItems.forEach((item) => {
+          item.classList.toggle('active', item.dataset.viewTarget === viewId);
+        });
+
+        cards.forEach((card) => {
+          card.classList.toggle('active', card.dataset.viewTarget === viewId);
+        });
+
+        const meta = viewMeta[viewId];
+        if (meta) {
+          toolbarTitle.textContent = meta.title;
+          modeTag.textContent = meta.mode;
+          typeTag.textContent = meta.type;
+          statusLeft.textContent = meta.statusLeft;
+          statusMid.textContent = meta.statusMid;
+          statusRight.textContent = meta.statusRight;
+        }
+      }
+
+      navButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          activateView(btn.dataset.viewTarget);
+        });
+      });
+
+      const rightTopTabs = document.querySelectorAll('#rightTopTabs [data-panel-target]');
+      const inspectorPanels = document.querySelectorAll('.inspector-panel');
+
+      rightTopTabs.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          rightTopTabs.forEach((x) => x.classList.remove('active'));
+          btn.classList.add('active');
+          inspectorPanels.forEach((panel) => {
+            panel.style.display = panel.id === btn.dataset.panelTarget ? 'block' : 'none';
+          });
+        });
+      });
+    </script>
+  </body>
+  </html>

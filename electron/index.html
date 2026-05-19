@@ -3,59 +3,189 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WriteMaster</title>
+    <title>WriteMaster Workbench</title>
     <style>
       :root {
-        --bg: #f5efe3;
-        --panel: #fffaf1;
-        --ink: #1f2937;
-        --accent: #8c3f2b;
-        --line: #d9c8aa;
+        --bg: #f3efe7;
+        --panel: #fffaf2;
+        --panel-2: #ffffff;
+        --line: #ddd2bf;
+        --ink: #1e293b;
+        --muted: #6b7280;
+        --accent: #9a4d2f;
+        --accent-soft: #f3e5d7;
+        --highlight: #d8e4ff;
+        --blue-soft: #eef1ff;
+        --blue-line: #c8d2ff;
+        --success: #166534;
+        --error: #991b1b;
       }
+
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         font-family: "Noto Serif SC", "Source Han Serif SC", serif;
-        background: radial-gradient(circle at top left, #fff7e5, var(--bg));
         color: var(--ink);
+        background:
+          radial-gradient(circle at top left, #fff7e8 0, transparent 24%),
+          linear-gradient(180deg, #faf6ef 0%, var(--bg) 100%);
       }
-      .wrap {
-        max-width: 920px;
-        margin: 32px auto;
-        padding: 24px;
+      button, input, select, textarea { font: inherit; }
+      .app {
+        display: grid;
+        grid-template-columns: 268px minmax(640px, 1fr) 420px;
+        height: 100vh;
       }
-      .panel {
+      .sidebar, .main, .inspector { min-height: 0; }
+      .sidebar {
+        border-right: 1px solid var(--line);
+        background: rgba(255, 250, 242, 0.92);
+        padding: 18px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .brand { font-size: 28px; font-weight: 700; letter-spacing: 0.02em; }
+      .action {
+        border: 1px solid #cfc3b1;
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-radius: 18px;
+        padding: 16px 18px;
+        font-size: 20px;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+      }
+      .nav, .cards, .config-list, .style-list, .preset-list { display: flex; flex-direction: column; gap: 10px; }
+      .nav-item, .card, .config-item, .style-item, .preset-item {
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 18px;
-        box-shadow: 0 16px 40px rgba(84, 55, 20, 0.08);
-        padding: 24px;
+        border-radius: 16px;
+        padding: 14px 16px;
+        cursor: pointer;
       }
-      h1 {
-        margin-top: 0;
-        font-size: 30px;
+      .nav-item.active, .card.active, .config-item.active, .preset-item.active, .style-item.active {
+        background: var(--blue-soft);
+        border-color: var(--blue-line);
       }
-      p {
-        line-height: 1.7;
+      .nav-title { font-size: 16px; font-weight: 600; }
+      .nav-sub, .card-sub, .config-meta, .style-meta, .preset-meta, .muted {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
       }
-      .grid {
+      .section-title {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #7c6958;
+      }
+      .card-title, .config-name, .style-name, .preset-name { font-size: 15px; font-weight: 700; }
+      .spacer { flex: 1; }
+      .sidebar-footer { display: flex; gap: 10px; }
+      .icon-btn {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .main {
         display: grid;
-        grid-template-columns: 140px 1fr auto;
+        grid-template-rows: auto auto 1fr auto;
+        background: #fbf9f5;
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(8px);
+      }
+      .back { font-size: 26px; }
+      .doc-title { font-size: 18px; font-weight: 700; }
+      .tag {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 13px;
+        background: white;
+      }
+      .tabbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .tablist { display: flex; gap: 8px; flex-wrap: wrap; }
+      .tab {
+        padding: 8px 14px;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        color: var(--muted);
+        background: transparent;
+        cursor: pointer;
+      }
+      .tab.active {
+        background: white;
+        border-color: var(--line);
+        color: var(--ink);
+        font-weight: 700;
+      }
+      .content { min-height: 0; overflow: hidden; }
+      .view { display: none; height: 100%; }
+      .view.active { display: block; }
+      .preview-wrap { overflow: auto; padding: 24px 0 36px; height: 100%; }
+      .page {
+        width: 780px;
+        min-height: 1080px;
+        margin: 0 auto;
+        background: white;
+        box-shadow: 0 12px 36px rgba(58, 42, 28, 0.12);
+        border: 1px solid #e5e0d8;
+        padding: 56px 64px;
+      }
+      .landing-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .panel {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 16px 18px;
+      }
+      .panel h3 {
+        margin: 0 0 12px;
+        font-size: 16px;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: 128px 1fr auto;
         gap: 12px;
         align-items: center;
       }
-      .grid + .grid {
-        margin-top: 12px;
-      }
-      input, select, button, textarea {
-        font: inherit;
-      }
-      input, select {
+      .form-grid + .form-grid { margin-top: 12px; }
+      input, select, textarea {
+        width: 100%;
         padding: 10px 12px;
         border-radius: 10px;
         border: 1px solid var(--line);
         background: white;
       }
-      button {
+      textarea {
+        min-height: 150px;
+        resize: vertical;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 13px;
+      }
+      .button {
         padding: 10px 16px;
         border: 0;
         border-radius: 999px;
@@ -63,62 +193,473 @@
         color: white;
         cursor: pointer;
       }
-      pre {
+      .button.secondary {
+        background: white;
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }
+      .button-row {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 18px;
+      }
+      .json {
         white-space: pre-wrap;
-        background: #fff;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.65;
+        color: #334155;
+      }
+      .rule-chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: #f2eee7;
+        border: 1px solid var(--line);
+        font-size: 12px;
+      }
+      .result-box {
+        white-space: pre-wrap;
+        background: white;
         border-radius: 12px;
         border: 1px solid var(--line);
         padding: 14px;
-        min-height: 120px;
+        min-height: 180px;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 13px;
+      }
+      .result-box.success { color: var(--success); }
+      .result-box.error { color: var(--error); }
+      .hidden { display: none !important; }
+      .statusbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 18px;
+        border-top: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.8);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .inspector {
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        border-left: 1px solid var(--line);
+        background: #f7f2ea;
+      }
+      .inspector-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .seg {
+        display: inline-flex;
+        border-radius: 12px;
+        background: #ece8df;
+        padding: 4px;
+        gap: 4px;
+      }
+      .seg button, .seg span {
+        padding: 6px 12px;
+        border-radius: 10px;
+        color: var(--muted);
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+      }
+      .seg .active {
+        background: white;
+        color: #2563eb;
+        font-weight: 700;
+      }
+      .inspector-body {
+        overflow: auto;
+        padding: 16px;
+        display: grid;
+        grid-template-rows: 260px 1fr;
+        gap: 16px;
+      }
+      .inspector-panel { display: none; }
+      .inspector-panel.active { display: block; }
+      .summary-bottom { display: none; }
+      .summary-bottom.active { display: block; }
+      /* Block preview styles */
+      .block {
+        border-radius: 8px;
+        padding: 4px 8px;
+        margin: 6px -8px;
+        cursor: pointer;
+        transition: background 0.12s;
+        position: relative;
+      }
+      .block:hover { background: #f5f0e8; }
+      .block.selected { background: var(--highlight); outline: 1px solid #b8c8ff; }
+      .block.heading1 { font-size: 26px; font-weight: 700; text-align: center; margin: 18px -8px 10px; }
+      .block.heading2 { font-size: 18px; font-weight: 700; margin: 14px -8px 8px; }
+      .block.heading3 { font-size: 16px; font-weight: 700; margin: 10px -8px 6px; }
+      .block.body { font-size: 15px; line-height: 1.9; text-indent: 2em; }
+      .block.caption { text-align: center; font-size: 13px; color: #4b5563; }
+      .block.note { background: #f7f4ee; border-left: 4px solid #d2b48c; padding: 10px 14px; }
+      .block.code { font-family: Consolas, "Courier New", monospace; font-size: 13px; background: #f5f5f5; padding: 10px 14px; white-space: pre-wrap; }
+      .block.ignore { opacity: 0.35; }
+      .block.listLevel1 { font-size: 15px; line-height: 1.9; padding-left: 24px; }
+      .block.listLevel2 { font-size: 15px; line-height: 1.9; padding-left: 48px; }
+      .block.table { background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-family: Consolas, monospace; font-size: 13px; }
+
+      /* Context menu styles */
+      .context-menu {
+        position: fixed;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(58, 42, 28, 0.14);
+        z-index: 9999;
+        min-width: 200px;
+        padding: 8px 0;
+      }
+      .context-item {
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.08s;
+      }
+      .context-item:hover { background: var(--blue-soft); }
+
+      @media (max-width: 1440px) {
+        .app { grid-template-columns: 240px minmax(540px, 1fr) 360px; }
+        .page { width: auto; margin: 0 24px; }
       }
     </style>
   </head>
   <body>
-    <div class="wrap">
-      <div class="panel">
-        <h1>WriteMaster</h1>
-        <p>选择输入模式、输入文件和可选输出后缀，然后执行当前文档处理流程。</p>
-        <div class="grid">
-          <label for="mode">模式</label>
-          <select id="mode">
-            <option value="md">Markdown 转 DOCX</option>
-            <option value="docx">DOCX 整理输出</option>
-          </select>
-          <span></span>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">WriteMaster</div>
+        <button class="action" id="primaryAction">应用当前模板</button>
+
+        <div class="nav">
+          <div class="nav-item active" data-view-target="landing-view">
+            <div class="nav-title">应用任务</div>
+            <div class="nav-sub">运行 Markdown 或 DOCX 处理链</div>
+          </div>
+          <div class="nav-item" data-view-target="template-view">
+            <div class="nav-title">模板提取</div>
+            <div class="nav-sub">查看母版结构与样式占位</div>
+          </div>
+          <div class="nav-item" data-view-target="config-view">
+            <div class="nav-title">Profile 配置</div>
+            <div class="nav-sub">查看当前模板摘要</div>
+          </div>
         </div>
-        <div class="grid">
-          <label for="inputPath">输入文件</label>
-          <input id="inputPath" placeholder="选择 .md 或 .docx 文件" />
-          <button id="chooseFile">选择文件</button>
+
+        <div>
+          <div class="section-title">内置模板</div>
+          <div class="cards" id="masterCards"></div>
         </div>
-        <div class="grid">
-          <label for="suffix">输出后缀</label>
-          <input id="suffix" placeholder="留空则使用默认命名" />
-          <span></span>
+
+        <div>
+          <div class="section-title">最近使用</div>
+          <div class="cards" id="recentFiles">
+            <div class="muted" style="padding: 10px 0;">暂无最近使用的文件</div>
+          </div>
         </div>
-        <div class="grid">
-          <label for="masterPath">母版 DOCX</label>
-          <input id="masterPath" placeholder="留空则使用默认母版" />
-          <span></span>
+
+        <div class="spacer"></div>
+        <div class="sidebar-footer">
+          <button class="icon-btn" title="刷新" id="refreshMasters">↻</button>
+          <button class="icon-btn" title="关于 WriteMaster v0.1.0" id="aboutBtn">i</button>
         </div>
-        <div class="grid">
-          <label for="pandocPath">Pandoc 路径</label>
-          <input id="pandocPath" placeholder="Markdown 模式可选；留空自动探测" />
-          <span></span>
+      </aside>
+
+      <main class="main">
+        <div class="toolbar">
+          <div class="back">⌂</div>
+          <div class="doc-title" id="toolbarTitle">WriteMaster Workbench</div>
+          <span class="tag" id="modeTag">应用任务</span>
+          <span class="tag" id="typeTag">内置母版</span>
         </div>
-        <div class="grid">
-          <label for="backupMdPath">备用 Markdown</label>
-          <input id="backupMdPath" placeholder="可选；用于表格恢复" />
-          <span></span>
+
+        <div class="tabbar">
+          <div class="tablist">
+            <button class="tab active" data-view-target="landing-view">应用任务</button>
+            <button class="tab" data-view-target="template-view">模板提取</button>
+            <button class="tab" data-view-target="config-view">Profile 配置</button>
+          </div>
+          <div class="tag" id="toolbarMasterTag">当前母版：review-master</div>
         </div>
-        <div class="grid" style="margin-top: 20px;">
-          <span></span>
-          <span></span>
-          <button id="run">开始处理</button>
+
+        <div class="content">
+          <section class="view active" id="landing-view">
+            <div class="preview-wrap">
+              <div class="page">
+                <div class="landing-grid">
+                  <div class="panel" style="grid-column: 1 / -1;">
+                    <h3>应用任务</h3>
+                    <div class="muted">当前只接入正式执行链路。模板提取与结构预览页面先保留为工作台壳。</div>
+                  </div>
+
+                  <div class="panel" style="grid-column: 1 / -1;">
+                    <div class="form-grid">
+                      <label for="mode">处理模式</label>
+                      <select id="mode">
+                        <option value="md">Markdown → DOCX</option>
+                        <option value="docx">DOCX 整理输出</option>
+                      </select>
+                      <span></span>
+                    </div>
+                    <div class="form-grid">
+                      <label for="inputPath">输入文件</label>
+                      <input id="inputPath" placeholder="选择 Markdown 或 DOCX 输入文件" />
+                      <button class="button secondary" id="chooseFile">选择文件</button>
+                    </div>
+                    <div class="form-grid">
+                      <label for="suffix">输出后缀</label>
+                      <input id="suffix" placeholder="留空则沿用默认命名规则" />
+                      <span></span>
+                    </div>
+                    <div class="form-grid">
+                      <label for="masterSelect">母版选择</label>
+                      <select id="masterSelect"></select>
+                      <button class="button secondary hidden" id="chooseMasterFile">选择母版</button>
+                    </div>
+                    <div class="form-grid hidden" id="customMasterRow">
+                      <label for="customMasterPath">外部母版</label>
+                      <input id="customMasterPath" placeholder="选择外部 DOCX 母版" />
+                      <button class="button secondary" id="pickCustomMaster">选择文件</button>
+                    </div>
+                    <div class="form-grid">
+                      <label for="pandocPath">Pandoc 路径</label>
+                      <input id="pandocPath" placeholder="Markdown 模式可选；留空自动探测" />
+                      <span></span>
+                    </div>
+                    <div class="form-grid">
+                      <label for="backupMdPath">备用 Markdown</label>
+                      <input id="backupMdPath" placeholder="DOCX 模式可选；用于表格恢复" />
+                      <span></span>
+                    </div>
+                    <div class="form-grid">
+                      <label for="profileSelect">模板 Profile</label>
+                      <select id="profileSelect">
+                        <option value="">使用内置规则（默认）</option>
+                      </select>
+                      <span></span>
+                    </div>
+                    <div class="button-row">
+                      <button class="button secondary" id="resetTask">重置</button>
+                      <button class="button" id="run">开始处理</button>
+                    </div>
+                  </div>
+
+                  <div class="panel">
+                    <h3>当前模板摘要</h3>
+                    <div class="preset-list">
+                      <div class="preset-item active">
+                        <div class="preset-name" id="selectedMasterName">教材 Review 母版</div>
+                        <div class="preset-meta" id="selectedMasterDesc">默认教材整理母版。</div>
+                      </div>
+                    </div>
+                    <div class="rule-chip-row" style="margin-top: 12px;">
+                      <span class="chip" id="selectedMasterKind">kind: review</span>
+                      <span class="chip" id="selectedMasterSource">source: built-in</span>
+                    </div>
+                  </div>
+
+                  <div class="panel">
+                    <h3>运行结果</h3>
+                    <div class="result-box" id="output">等待任务执行。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" id="template-view">
+            <!-- Upload prompt (shown when no master is loaded) -->
+            <div id="extract-upload" class="preview-wrap">
+              <div class="page">
+                <div class="panel" style="text-align:center; padding: 60px 40px;">
+                  <h3>模板提取工作台</h3>
+                  <div class="muted" style="margin: 16px 0;">选择一份母版 DOCX 来提取其段落结构与样式。</div>
+                  <div class="button-row" style="justify-content:center;">
+                    <button class="button" id="pickMasterForExtract">选择母版 DOCX</button>
+                  </div>
+                  <div class="muted" style="margin-top: 20px;">也可以从侧边栏的「内置模板」中选择</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Extraction result (shown after a master is loaded) -->
+            <div id="extract-result" class="preview-wrap hidden">
+              <div class="page" id="blockPreview">
+                <!-- Dynamically populated with clickable blocks -->
+              </div>
+              <!-- Profile generation panel -->
+              <div class="page" style="min-height:auto; margin-top:18px;">
+                <div class="panel" id="profileGenPanel">
+                  <h3>生成模板 Profile</h3>
+                  <div class="form-grid" style="margin-top: 12px;">
+                    <label for="profileName">Profile 名称</label>
+                    <input id="profileName" placeholder="例如：mysql-textbook-liu" />
+                    <span></span>
+                  </div>
+                  <div class="muted" style="margin: 8px 0;" id="roleSummary">尚未标记任何语义角色（右键点击段落来标记）</div>
+                  <div class="rule-chip-row" id="roleChips"></div>
+                  <div class="button-row">
+                    <button class="button secondary" id="clusterBtn">自动聚类</button>
+                    <button class="button" id="generateProfileBtn">生成 Profile</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" id="config-view">
+            <div class="preview-wrap">
+              <div class="page">
+                <!-- Profile List -->
+                <div class="panel">
+                  <h3>已保存的 Profile 配置</h3>
+                  <div class="preset-list" id="profileList"></div>
+                  <div class="muted" id="noProfilesNote" style="margin-top: 10px;">暂无已保存的配置。请先在「模板提取」中生成 Profile。</div>
+                  <div class="button-row" style="margin-top: 12px;">
+                    <button class="button secondary" id="importProfileBtn">导入 JSON</button>
+                    <button class="button secondary" id="exportProfileBtn">导出当前</button>
+                    <button class="button secondary" id="deleteProfileBtn" style="color: #991b1b;">删除</button>
+                  </div>
+                </div>
+
+                <!-- Profile Editor (shown when a profile is selected) -->
+                <div class="panel hidden" id="profileEditor" style="margin-top: 18px;">
+                  <h3 id="profileEditorTitle">编辑 Profile</h3>
+                  <div class="form-grid">
+                    <label>配置名称</label>
+                    <input id="editProfileName" />
+                    <span></span>
+                  </div>
+                  <div class="form-grid">
+                    <label>来源母版</label>
+                    <input id="editSourceTemplate" />
+                    <span></span>
+                  </div>
+                  <h4 style="margin: 16px 0 10px;">样式映射</h4>
+                  <div class="config-list" id="styleMappingList"></div>
+                  <div class="button-row">
+                    <button class="button secondary" id="cancelEditProfile">取消</button>
+                    <button class="button" id="saveEditProfile">保存修改</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-        <pre id="output"></pre>
-      </div>
+
+        <div class="statusbar">
+          <span id="statusLeft">当前视图：应用任务</span>
+          <span id="statusMid">默认模板：review-master</span>
+          <span id="statusRight">尚未生成输出</span>
+        </div>
+      </main>
+
+      <aside class="inspector">
+        <div class="inspector-head">
+          <div style="font-weight: 700;">结构与规则</div>
+          <div class="seg" id="rightTopTabs">
+            <button class="active" data-panel-target="json-panel">JSON</button>
+            <button data-panel-target="style-panel">样式</button>
+            <button data-panel-target="profile-panel">Profile</button>
+          </div>
+        </div>
+
+        <div class="inspector-head" style="padding-top: 10px; padding-bottom: 10px;">
+          <div class="seg" id="summaryTabs">
+            <span class="active" data-summary-target="summary-state">当前状态</span>
+            <span data-summary-target="summary-master">模板摘要</span>
+            <span data-summary-target="summary-result">结果信息</span>
+          </div>
+        </div>
+
+        <div class="inspector-body">
+          <div class="panel inspector-panel active" id="json-panel">
+            <h3>当前状态 JSON</h3>
+            <div class="json" id="stateJson"></div>
+          </div>
+
+          <div class="panel inspector-panel" id="style-panel">
+            <h3>临时样式</h3>
+            <div class="style-list" id="inspectorTempStyleList">
+              <div class="muted">尚未聚类，在模板提取视图中点击「自动聚类」生成。</div>
+            </div>
+            <h3 style="margin-top: 16px;">模板列表</h3>
+            <div class="style-list" id="inspectorMasterList"></div>
+          </div>
+
+          <div class="panel inspector-panel" id="profile-panel">
+            <h3>当前 Profile 摘要</h3>
+            <div class="style-list" id="inspectorProfileList">
+              <div class="style-item">
+                <div class="style-name">应用链路</div>
+                <div class="style-meta">Markdown → temp.docx → review.docx / DOCX review</div>
+              </div>
+              <div class="style-item">
+                <div class="style-name">内置模板策略</div>
+                <div class="style-meta">优先选 built-in，外部母版作为覆盖入口</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom summary panels (controlled by second seg) -->
+          <div class="panel summary-bottom active" id="summary-state">
+            <h3>运行摘要</h3>
+            <div class="config-list">
+              <div class="config-item">
+                <div class="config-name">最近输出</div>
+                <div class="config-meta" id="lastOutput">尚未生成</div>
+              </div>
+              <div class="config-item">
+                <div class="config-name">当前母版</div>
+                <div class="config-meta" id="currentMasterMeta">review-master / built-in</div>
+              </div>
+              <div class="config-item">
+                <div class="config-name">当前模式</div>
+                <div class="config-meta" id="currentModeMeta">Markdown → DOCX</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel summary-bottom" id="summary-master">
+            <h3>模板摘要</h3>
+            <div class="config-list" id="inspectorMasterSummary">
+              <div class="muted">选择母版后显示摘要。</div>
+            </div>
+          </div>
+
+          <div class="panel summary-bottom" id="summary-result">
+            <h3>结果信息</h3>
+            <div class="result-box" id="summaryResultBox" style="min-height:100px;">等待任务执行。</div>
+          </div>
+        </div>
+      </aside>
     </div>
+
+    <div id="contextMenu" class="context-menu hidden">
+      <div class="context-item" data-role="body">设为正文</div>
+      <div class="context-item" data-role="heading1">设为一级标题</div>
+      <div class="context-item" data-role="heading2">设为二级标题</div>
+      <div class="context-item" data-role="heading3">设为三级标题</div>
+      <div class="context-item" data-role="caption">设为图题 / 表题</div>
+      <div class="context-item" data-role="code">设为代码块</div>
+      <div class="context-item" data-role="note">设为提示说明</div>
+      <div class="context-item" data-role="listLevel1">设为列表一级</div>
+      <div class="context-item" data-role="listLevel2">设为列表二级</div>
+      <div class="context-item" data-role="table">设为表格</div>
+      <div class="context-item" data-role="ignore">忽略该块</div>
+    </div>
+
     <script src="./renderer.js"></script>
   </body>
   </html>

@@ -4,27 +4,76 @@ const path = require('path');
 const crypto = require('crypto');
 const PizZip = require('pizzip');
 const { DOMParser, XMLSerializer } = require('xmldom');
-const embeddedMasterBase64 = require('../generated/embedded-master');
+const embeddedMasters = require('../generated/embedded-masters');
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
-const MASTER_CANDIDATES = [
-  path.resolve(__dirname, '../../templates/review-master.docx'),
-  path.resolve(__dirname, '../templates/review-master.docx'),
+const MASTER_REGISTRY = [
+  {
+    id: 'review-master',
+    label: '教材 Review 母版',
+    kind: 'review',
+    description: '默认教材整理母版。',
+    filename: 'review-master.docx',
+    isDefault: true,
+  },
+  {
+    id: 'chapter10-monograph',
+    label: '第10章专著母版',
+    kind: 'monograph',
+    description: '专著章节样式母版。',
+    filename: 'chapter10-monograph.docx',
+    isDefault: false,
+  },
 ];
-const DEFAULT_MASTER = MASTER_CANDIDATES.find((candidate) => fs.existsSync(candidate)) || MASTER_CANDIDATES[0];
+const DEFAULT_MASTER_ID = 'review-master';
+const TEMPLATE_DIR_CANDIDATES = [
+  path.resolve(__dirname, '../../templates'),
+  path.resolve(__dirname, '../templates'),
+];
 
-let cachedEmbeddedMasterPath = null;
+let cachedEmbeddedMasterPaths = new Map();
 let cachedExternalizedMasterPath = null;
 
-function ensureEmbeddedMasterFile() {
-  if (!embeddedMasterBase64) return null;
-  if (cachedEmbeddedMasterPath && fs.existsSync(cachedEmbeddedMasterPath)) return cachedEmbeddedMasterPath;
-  const hash = crypto.createHash('sha1').update(embeddedMasterBase64).digest('hex').slice(0, 12);
+function listBuiltInMasters() {
+  return MASTER_REGISTRY.map((entry) => {
+    const embedded = Array.isArray(embeddedMasters) ? embeddedMasters.find((item) => item.id === entry.id) : null;
+    return {
+      id: entry.id,
+      label: entry.label,
+      kind: entry.kind,
+      description: entry.description,
+      isDefault: entry.id === DEFAULT_MASTER_ID,
+      sourceType: embedded ? 'embedded' : 'filesystem',
+      filename: entry.filename,
+    };
+  });
+}
+
+function findBuiltInMaster(masterId) {
+  const id = masterId || DEFAULT_MASTER_ID;
+  return MASTER_REGISTRY.find((entry) => entry.id === id) || MASTER_REGISTRY.find((entry) => entry.id === DEFAULT_MASTER_ID);
+}
+
+function findMasterFileOnDisk(entry) {
+  if (!entry) return null;
+  for (const dir of TEMPLATE_DIR_CANDIDATES) {
+    const fp = path.join(dir, entry.filename);
+    if (fs.existsSync(fp)) return fp;
+  }
+  return null;
+}
+
+function ensureEmbeddedMasterFile(masterId) {
+  const entry = Array.isArray(embeddedMasters) ? embeddedMasters.find((item) => item.id === masterId) : null;
+  if (!entry || !entry.base64) return null;
+  const cached = cachedEmbeddedMasterPaths.get(masterId);
+  if (cached && fs.existsSync(cached)) return cached;
+  const hash = crypto.createHash('sha1').update(entry.base64).digest('hex').slice(0, 12);
   const dir = path.join(os.tmpdir(), 'writemaster');
-  const fp = path.join(dir, `review-master-${hash}.docx`);
+  const fp = path.join(dir, `${masterId}-${hash}.docx`);
   fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(fp)) fs.writeFileSync(fp, Buffer.from(embeddedMasterBase64, 'base64'));
-  cachedEmbeddedMasterPath = fp;
+  if (!fs.existsSync(fp)) fs.writeFileSync(fp, Buffer.from(entry.base64, 'base64'));
+  cachedEmbeddedMasterPaths.set(masterId, fp);
   return fp;
 }
 
@@ -41,17 +90,38 @@ function externalizeMasterFile(sourcePath) {
   return fp;
 }
 
-function resolveMasterPath(masterPath) {
-  if (masterPath && fs.existsSync(masterPath)) return externalizeMasterFile(masterPath);
-  if (!masterPath && fs.existsSync(DEFAULT_MASTER)) return externalizeMasterFile(DEFAULT_MASTER);
-  const embedded = ensureEmbeddedMasterFile();
+function resolveMasterPath(masterInput, legacyCustomPath) {
+  if (typeof masterInput === 'string' && !legacyCustomPath) {
+    if (fs.existsSync(masterInput)) return externalizeMasterFile(masterInput);
+    const builtIn = findBuiltInMaster(masterInput);
+    if (builtIn && builtIn.id === masterInput) {
+      const diskPath = findMasterFileOnDisk(builtIn);
+      if (diskPath) return externalizeMasterFile(diskPath);
+      const embedded = ensureEmbeddedMasterFile(builtIn.id);
+      if (embedded) return embedded;
+    }
+  }
+
+  const options = masterInput && typeof masterInput === 'object'
+    ? masterInput
+    : { customPath: legacyCustomPath, masterPath: typeof masterInput === 'string' ? masterInput : undefined };
+
+  const customPath = options.customPath || options.masterPath;
+  if (customPath && fs.existsSync(customPath)) return externalizeMasterFile(customPath);
+
+  const selected = findBuiltInMaster(options.masterId);
+  const diskPath = findMasterFileOnDisk(selected);
+  if (diskPath) return externalizeMasterFile(diskPath);
+  const embedded = ensureEmbeddedMasterFile(selected.id);
   if (embedded) return embedded;
-  return masterPath || DEFAULT_MASTER;
+  return customPath || path.join(TEMPLATE_DIR_CANDIDATES[0], selected.filename);
 }
 
 function describeDefaultMaster() {
-  if (fs.existsSync(DEFAULT_MASTER)) return DEFAULT_MASTER;
-  return 'embedded review-master.docx';
+  const masters = listBuiltInMasters()
+    .map((master) => `${master.id}${master.isDefault ? ' (default)' : ''}`)
+    .join(', ');
+  return `built-in masters: ${masters}`;
 }
 
 function loadDocx(fp) {
@@ -488,11 +558,18 @@ function processReview(options) {
     inputPath,
     outputPath,
     masterPath,
+    masterId,
+    customMasterPath,
     mdPath,
     backupMdPath,
+    profile,
   } = options;
 
-  const resolvedMaster = resolveMasterPath(masterPath);
+  const resolvedMaster = resolveMasterPath({
+    masterId,
+    customPath: customMasterPath || masterPath,
+    masterPath,
+  });
   const masterZip = loadDocx(resolvedMaster);
   const targetZip = loadDocx(inputPath);
   copyMasterPackage(masterZip, targetZip);
@@ -509,6 +586,15 @@ function processReview(options) {
     note: styleMap.nameToId['提示说明样式'],
     table: styleMap.nameToId['Table Grid'] || 'TableGrid',
   };
+
+  // Override with profile-specified style IDs if a profile is provided
+  if (profile && profile.styles) {
+    for (const [role, styleId] of Object.entries(profile.styles)) {
+      if (styleId && styleIds.hasOwnProperty(role)) {
+        styleIds[role] = styleId;
+      }
+    }
+  }
 
   const children = childArray(body);
   const removeNodes = new Set();
@@ -673,8 +759,17 @@ if (require.main === module) {
 }
 
 module.exports = {
-  DEFAULT_MASTER,
   describeDefaultMaster,
+  listBuiltInMasters,
   processReview,
   resolveMasterPath,
+  DEFAULT_MASTER_ID,
+  W_NS,
+  loadDocx,
+  getXml,
+  parseXml,
+  childArray,
+  getParagraphText,
+  getParagraphStyleId,
+  buildStyleMap,
 };

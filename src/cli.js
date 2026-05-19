@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { buildFromMarkdown } = require('./core/build');
-const { describeDefaultMaster, processReview } = require('./core/review');
+const { describeDefaultMaster, processReview, listBuiltInMasters, DEFAULT_MASTER_ID } = require('./core/review');
 
 function printHelp() {
   console.log(`writemaster
@@ -14,6 +14,7 @@ Usage:
 Optional:
   --out <file.docx>       Write to an explicit output path
   --master <file.docx>    Override the review master template
+  --master-id <id>        Choose a built-in master template
   --pandoc <path>         Override the pandoc executable for --md
   --backup-md <file.md>   Optional backup markdown for table recovery
   --keep-temp             Keep the intermediate temp docx for --md
@@ -26,7 +27,10 @@ Rules:
   --docx xxx.docx      -> xxx_review.docx
 
 Default master:
-  ${describeDefaultMaster()}`);
+  ${describeDefaultMaster()}
+
+Built-in master ids:
+  ${listBuiltInMasters().map((master) => `${master.id}${master.id === DEFAULT_MASTER_ID ? ' (default)' : ''}`).join('\n  ')}`);
 }
 
 function parseArgs(argv) {
@@ -52,11 +56,18 @@ function parseArgs(argv) {
       case '--master':
         args.master = argv[++i];
         break;
+      case '--master-id':
+        args.masterId = argv[++i];
+        break;
       case '--pandoc':
         args.pandoc = argv[++i];
         break;
       case '--backup-md':
         args.backupMd = argv[++i];
+        break;
+      case '--extract':
+        args.mode = 'extract';
+        args.input = argv[++i];
         break;
       case '--keep-temp':
         args.keepTemp = true;
@@ -99,12 +110,21 @@ function main(argv = process.argv.slice(2)) {
     throw new Error(`Input file not found: ${args.input}`);
   }
 
+  if (args.mode === 'extract') {
+    const { extractBlocks } = require('./core/extract');
+    const result = extractBlocks(path.resolve(args.input));
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
   const outputPath = buildOutputPath(args.input, args.mode, args.name, args.out);
   if (args.mode === 'md') {
     buildFromMarkdown({
       mdPath: args.input,
       outputPath,
       masterPath: args.master,
+      masterId: args.masterId,
+      customMasterPath: args.master,
       pandocPath: args.pandoc,
       backupMdPath: args.backupMd,
       keepTemp: args.keepTemp,
@@ -113,6 +133,8 @@ function main(argv = process.argv.slice(2)) {
     processReview({
       inputPath: path.resolve(args.input),
       outputPath,
+      masterId: args.masterId,
+      customMasterPath: args.master,
       masterPath: args.master,
       mdPath: args.backupMd,
       backupMdPath: undefined,

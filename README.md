@@ -1,139 +1,205 @@
-# WriteMaster
+<p align="center">
+  <h1 align="center">WriteMaster</h1>
+  <p align="center"><strong>把 Markdown 或 DOCX 转成指定母版风格的 DOCX</strong> — 统一 OOXML 规则后处理，支持 CLI / 单文件 / Electron 桌面 / Rust 四种入口。</p>
+</p>
 
-`WriteMaster` 是把当前教材整理工作流封成工具轮子的仓库版本。它统一复用同一套 Node 核心规则，并提供四个入口形态：
+<p align="center">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg" />
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" />
+  <img alt="Node" src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" />
+</p>
 
-- CLI
-- Node 依赖的单文件 bundle
-- Electron 桌面壳
-- Rust 二进制包装层
+---
 
-## 仓库结构
-
-- `src/core/review.js`
-  - 共享的 OOXML review 后处理核心
-- `src/core/build.js`
-  - `md -> temp.docx -> review.docx` 管线
-- `src/cli.js`
-  - `writemaster` 命令行入口
-- `scripts/build-single-file.js`
-  - 构建单文件 Node bundle
-- `electron/`
-  - Electron 前端壳
-- `rust-wrapper/`
-  - Rust 包装层
-- `templates/review-master.docx`
-  - 默认 review 母版
-
-## CLI 用法
+## 快速开始（30 秒）
 
 ```powershell
-writemaster --md D:\path\to\项目四.md
-writemaster --md D:\path\to\项目四.md final
-writemaster --docx D:\path\to\项目四.docx
-writemaster --docx D:\path\to\项目四.docx clean
-```
-
-规则：
-
-- `writemaster --md xxx.md name` -> `xxx_name.docx`
-- `writemaster --md xxx.md` -> `xxx.docx`
-- `writemaster --docx xxx.docx name` -> `xxx_name.docx`
-- `writemaster --docx xxx.docx` -> `xxx_review.docx`
-
-可选参数：
-
-- `--out <file.docx>`
-- `--master <file.docx>`
-- `--pandoc <path>`
-- `--backup-md <file.md>`
-- `--keep-temp`
-
-## 安装依赖
-
-```powershell
+# 1. 安装依赖
 npm install
+
+# 2. 查看帮助（确认一切就绪）
+node src/cli.js --help
+
+# 3. 跑一次 docx 整理
+node src/cli.js --docx ./test/your-file.docx
+# 输出：./test/your-file_review.docx
+
+# 4. 跑一次 Markdown 转 DOCX
+node src/cli.js --md ./test/your-file.md --master-id review-master
+# 输出：./test/your-file.docx
 ```
 
-## 快速验证
+---
+
+## 功能一览
+
+| 功能 | 说明 |
+|------|------|
+| **Markdown → DOCX** | Pandoc 转换 + OOXML 母版样式应用 |
+| **DOCX 整理输出** | 对已有 DOCX 进行样式覆盖、段落分类、编号重排 |
+| **多母版支持** | 内置 `review-master`（教材）和 `chapter10-monograph`（专著），支持自定义外部母版 |
+| **智能段落分类** | 自动识别标题层级、正文、图题/表题、代码块、提示说明块 |
+| **表格恢复** | 从 Markdown 源文件重建丢失的表格结构 |
+| **编号系统** | 项目目标组编号、(x) 括号编号、①② 圈号编号自动管理 |
+| **模板提取工作台** | Electron 内可视化提取母版结构，右键标注语义角色，自动聚类临时样式 |
+| **Profile 配置** | 将样式映射保存为可复用配置，支持导入/导出 JSON |
+| **单文件 Bundle** | 内嵌母版 base64 的独立 `.cjs` 文件，无需 `node_modules` |
+| **Electron 桌面** | 三视图 Workbench（应用任务 / 模板提取 / Profile 配置），便携版 EXE |
+| **Rust CLI 包装** | 零依赖的薄包装层，调用 Node 核心 |
+
+---
+
+## 为什么做这个项目
+
+学术教材和专著的排版工作流长期依赖"手动在 Word 里调样式"。作者通常用 Markdown 写作，通过 Pandoc 转成 DOCX，但产出的文件在段落样式、编号层级、代码块格式、表格结构等方面与出版社要求的母版差距很大。
+
+**核心痛点：**
+- Pandoc 生成的 DOCX 样式不精确——所有段落都是同一种格式
+- 母版模板中的样式定义无法自动匹配到内容
+- 编号系统（项目目标、括号编号、圈号编号）需要手工逐段调整
+- 表格经常丢失，需要从 Markdown 源手动恢复
+
+WriteMaster 把这些问题固化成可复用规则，一次配置，重复使用。
+
+---
+
+## 入口形态
+
+| 入口 | 适用场景 | 启动方式 |
+|------|---------|---------|
+| **CLI** | 脚本/批量处理/CI | `node src/cli.js --md file.md` |
+| **单文件 Bundle** | 独立分发、无需安装 | `node dist/writemaster.single.cjs --md file.md` |
+| **Electron 桌面** | 可视化操作、模板提取 | `npm run electron` |
+| **Rust 二进制** | 性能敏感/无 Node 环境 | `cargo build --release && ./target/release/writemaster-rs` |
+
+---
+
+## CLI 用法详解
 
 ```powershell
-node .\src\cli.js --help
-node .\src\cli.js --docx D:\path\to\input.docx smoke
+writemaster --md <file.md> [name]
+writemaster --docx <file.docx> [name]
 ```
 
-## 构建 Node 单文件
+### 可选参数
+
+| 参数 | 说明 |
+|------|------|
+| `--out <file.docx>` | 指定输出路径 |
+| `--master <file.docx>` | 自定义外部母版 DOCX |
+| `--master-id <id>` | 选择内置母版（`review-master` / `chapter10-monograph`） |
+| `--pandoc <path>` | Pandoc 可执行文件路径（仅 md 模式） |
+| `--backup-md <file.md>` | 备用 Markdown 文件（用于 docx 模式的表格恢复） |
+| `--keep-temp` | 保留中间临时文件 |
+| `--help` | 查看帮助 |
+
+### 输出命名规则
+
+| 命令 | 输出文件 |
+|------|---------|
+| `--md xxx.md name` | `xxx_name.docx` |
+| `--md xxx.md` | `xxx.docx` |
+| `--docx xxx.docx name` | `xxx_name.docx` |
+| `--docx xxx.docx` | `xxx_review.docx` |
+
+### 内置母版
+
+| ID | 名称 | 类型 | 默认 |
+|----|------|------|------|
+| `review-master` | 教材 Review 母版 | review | 是 |
+| `chapter10-monograph` | 第 10 章专著母版 | monograph | 否 |
+
+---
+
+## Electron Workbench
+
+```
+npm run electron           # 开发模式
+npm run electron:portable  # 构建便携版 EXE
+```
+
+三视图：
+
+1. **应用任务** — Markdown→DOCX 或 DOCX 整理，选择母版/Profile，一键运行
+2. **模板提取** — 上传母版 DOCX，解析段落结构，右键标注语义角色，自动聚类生成 Profile
+3. **Profile 配置** — 管理已保存的样式映射，编辑/导入/导出 JSON
+
+---
+
+## 构建
 
 ```powershell
-npm run bundle
+npm run bundle            # 构建单文件 Node bundle → dist/writemaster.single.cjs
+npm run electron:portable # 构建 + 打包 Electron 便携版 EXE
+npm run rust:build        # 构建 Rust CLI 包装层
 ```
 
-输出：
+> Rust 构建需要 Visual Studio Build Tools（含 C++ 构建工具），否则 `link.exe` 不可用。
 
-- `dist/writemaster.single.cjs`
+---
 
-这个 bundle 会把默认母版 `review-master.docx` 以内嵌方式打进去，因此可以作为真正的单文件 Node 工具运行：
+## 项目结构
 
-```powershell
-node .\dist\writemaster.single.cjs --help
+```
+WriteMaster/
+├── src/
+│   ├── cli.js                  # CLI 入口
+│   ├── cli-single-file.js      # 单文件 bundle 入口
+│   ├── core/
+│   │   ├── review.js           # OOXML review 后处理核心（~760 行）
+│   │   ├── build.js            # md → temp.docx → review.docx 管线
+│   │   └── extract.js          # DOCX 结构提取 + 聚类 + Profile 生成
+│   └── generated/
+│       └── embedded-masters.js # 占位文件（构建时注入 base64）
+├── electron/                   # Electron 桌面应用
+│   ├── main.js                 # 主进程 + IPC handlers
+│   ├── preload.js              # contextBridge API
+│   ├── renderer.js             # 前端状态管理与渲染
+│   └── index.html              # Workbench 三视图 UI
+├── templates/                  # 内置母版 DOCX
+│   ├── review-master.docx
+│   └── chapter10-monograph.docx
+├── scripts/
+│   └── build-single-file.js    # esbuild 单文件打包
+├── rust-wrapper/               # Rust CLI 包装层
+│   ├── Cargo.toml
+│   └── src/main.rs
+├── dist/                       # 构建产物（bundle）
+├── electron-dist/              # 构建产物（Electron 便携版）
+├── test/                       # 测试文件和脚本
+├── RELEASE.md
+├── CHANGELOG.md
+└── package.json
 ```
 
-若要快速做一轮 smoke test：
+---
 
-```powershell
-node .\dist\writemaster.single.cjs --docx D:\path\to\input.docx smoke
-```
+## 技术栈
 
-## 启动 Electron
+| 层 | 技术 |
+|----|------|
+| OOXML 操作 | [PizZip](https://github.com/open-xml-templating/pizzip) + [xmldom](https://github.com/xmldom/xmldom) |
+| Markdown 转换 | [Pandoc](https://pandoc.org/)（外部依赖，仅 md 模式） |
+| 打包 | [esbuild](https://esbuild.github.io/) (bundle) + [electron-builder](https://www.electron.build/) (portable) |
+| 桌面 | [Electron](https://www.electronjs.org/) |
+| Rust CLI | [clap](https://docs.rs/clap/) |
 
-```powershell
-npm run electron
-```
+---
 
-## 构建 Rust 包装层
+## 贡献
 
-```powershell
-npm run rust:build
-```
+欢迎提交 Issue 和 Pull Request。如果你对以下方向感兴趣：
 
-注意：
+- 更多母版模板适配
+- macOS / Linux 便携版测试
+- 公式对象重排
+- 交叉引用修复
+- 更精确的样式聚类算法
 
-- Windows 下需要可用的 Rust MSVC 链接环境
-- 如果出现 `link.exe not found`，需要安装 Visual Studio Build Tools，并勾选 C++ 构建工具
+请先开 Issue 讨论后再提交 PR。
 
-生成的 Rust 二进制会优先调用：
+---
 
-1. `dist/writemaster.single.cjs`
-2. 若 bundle 不存在，则回退到 `src/cli.js`
+## 许可
 
-## 首发建议内容
-
-- `README.md`
-- `LICENSE`
-- `CHANGELOG.md`
-- `RELEASE.md`
-- `templates/review-master.docx`
-- `src/`
-- `scripts/`
-- `electron/`
-- `rust-wrapper/`
-
-## 首次推送
-
-如果本地已经完成首批提交，可直接执行：
-
-```powershell
-git push -u origin main
-```
-
-## 当前实现策略
-
-- 真正复杂的规则仍然集中在 Node 核心
-- Electron 和 Rust 先复用这套核心，不重复实现 OOXML 逻辑
-- 这样后续继续修：
-  - 编号逻辑
-  - SQL 断行
-  - 例题样式
-  - 提示说明拆段
-  - 表格恢复
-
-都只需要改一处核心
+MIT License

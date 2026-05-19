@@ -21,6 +21,12 @@ struct Cli {
     #[arg(long, value_name = "FILE")]
     master: Option<PathBuf>,
 
+    #[arg(long = "master-id", value_name = "ID")]
+    master_id: Option<String>,
+
+    #[arg(long, value_name = "FILE")]
+    extract: Option<PathBuf>,
+
     #[arg(long, value_name = "PATH")]
     pandoc: Option<PathBuf>,
 
@@ -75,6 +81,27 @@ fn main() -> ExitCode {
     if let Some(master) = cli.master {
         args.push("--master".into());
         args.push(master.to_string_lossy().to_string());
+    }
+    if let Some(master_id) = cli.master_id {
+        args.push("--master-id".into());
+        args.push(master_id);
+    }
+    if let Some(extract) = cli.extract {
+        args.push("--extract".into());
+        args.push(extract.to_string_lossy().to_string());
+        // --extract is a standalone mode; skip the md/docx requirement
+        let status = Command::new(node_bin)
+            .args(args)
+            .current_dir(repo)
+            .status();
+        return match status {
+            Ok(status) if status.success() => ExitCode::SUCCESS,
+            Ok(status) => ExitCode::from(status.code().unwrap_or(1) as u8),
+            Err(error) => {
+                eprintln!("Failed to launch Node wrapper: {error}");
+                ExitCode::from(1)
+            }
+        };
     }
     if let Some(pandoc) = cli.pandoc {
         args.push("--pandoc".into());
