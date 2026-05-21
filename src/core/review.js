@@ -357,7 +357,14 @@ function makeRun(doc, text, styleId, styleRpr, bold = false) {
 
 function clearParagraphRuns(pEl) {
   const runs = childArray(pEl).filter((n) => n.nodeType === 1 && n.localName === 'r');
-  runs.forEach((r) => pEl.removeChild(r));
+  runs.forEach((r) => {
+    // Preserve runs that contain drawings or VML images
+    const hasDrawing = r.getElementsByTagNameNS(W_NS, 'drawing').length;
+    const hasPict = r.getElementsByTagNameNS(W_NS, 'pict').length;
+    if (!hasDrawing && !hasPict) {
+      pEl.removeChild(r);
+    }
+  });
 }
 
 function extractParagraphLines(pEl) {

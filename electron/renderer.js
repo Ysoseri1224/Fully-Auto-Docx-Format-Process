@@ -360,6 +360,22 @@ function renderBlockPreview() {
     }
 
     if (block.type === 'table') div.classList.add('table');
+    if (block.type === 'image') {
+      div.classList.add('image');
+      div.textContent = '';
+      const img = document.createElement('img');
+      img.src = block.dataUrl;
+      img.alt = block.altText || block.text || '';
+      img.title = block.text || '';
+      if (block.widthPx) img.style.maxWidth = Math.min(block.widthPx, 700) + 'px';
+      img.style.display = 'block';
+      img.style.margin = '0 auto';
+      div.appendChild(img);
+      const caption = document.createElement('div');
+      caption.className = 'image-caption';
+      caption.textContent = block.text || block.altText || '';
+      div.appendChild(caption);
+    }
 
     if (block.id === state.selectedBlockId) div.classList.add('selected');
 

@@ -12,6 +12,11 @@ const {
   W_NS,
 } = require('./review');
 
+const RELS_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
+const DRAWING_NS = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
+const A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
 /**
  * Extract the visual format from a paragraph element.
  * Merges style-level rPr defaults with direct formatting on the first run.
@@ -265,6 +270,156 @@ function extractTableBlock(tblEl, index, styleMap) {
 }
 
 /**
+ * Extract images from VML w:pict elements (older Word format).
+ * v:imagedata references images via r:id just like w:drawing.
+ */
+function extractVmlImagesFromParagraph(pEl, index, relMap, zip) {
+  const images = [];
+  const picts = pEl.getElementsByTagNameNS(W_NS, 'pict');
+  if (!picts.length) return images;
+
+  for (let pi = 0; pi < picts.length; pi++) {
+    const pict = picts[pi];
+    const imageDatas = pict.getElementsByTagNameNS('urn:schemas-microsoft-com:vml', 'imagedata');
+    for (let i = 0; i < imageDatas.length; i++) {
+      const im = imageDatas[i];
+      const embedId = im.getAttributeNS(R_NS, 'id') || im.getAttribute('r:id');
+      const title = im.getAttribute('o:title') || im.getAttribute('title') || '';
+      if (!embedId) continue;
+
+      const mediaPath = relMap.get(embedId);
+      if (!mediaPath) continue;
+
+      const imgBuf = zip.file(mediaPath);
+      if (!imgBuf) continue;
+
+      const base64 = imgBuf.asNodeBuffer().toString('base64');
+      const ext = mediaPath.split('.').pop().toLowerCase();
+      const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'bmp' ? 'image/bmp' : ext === 'svg' ? 'image/svg+xml' : 'image/jpeg';
+      const dataUrl = 'data:' + mime + ';base64,' + base64;
+
+      const text = getParagraphText(pEl).trim();
+      const id = 'img-' + String(index).padStart(4, '0') + (images.length ? '-' + images.length : '');
+
+      images.push({
+        id,
+        type: 'image',
+        role: 'unknown',
+        text: text || title || '(图片)',
+        dataUrl,
+        mime,
+        widthPx: null,
+        heightPx: null,
+        altText: title || null,
+        location: {
+          pageIndex: Math.floor(index / 40),
+          order: index,
+        },
+      });
+    }
+  }
+
+  return images;
+}
+
+/**
+ * Build a map of relationship ID → media file path from word/_rels/document.xml.rels
+ */
+function buildImageRelMap(zip) {
+  const relsXml = getXml(zip, 'word/_rels/document.xml.rels');
+  if (!relsXml) return new Map();
+
+  const relsDoc = parseXml(relsXml);
+  const relEls = relsDoc.getElementsByTagNameNS(RELS_NS, 'Relationship');
+  const map = new Map();
+
+  for (let i = 0; i < relEls.length; i++) {
+    const el = relEls[i];
+    const id = el.getAttribute('Id');
+    const type = el.getAttribute('Type');
+    const target = el.getAttribute('Target');
+    if (id && type && target && type.includes('image')) {
+      // target is relative to word/, e.g. "media/image1.png"
+      map.set(id, 'word/' + target);
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Extract image blocks from a paragraph's w:drawing elements.
+ * Returns an array of image block objects (may be empty).
+ */
+function extractImagesFromParagraph(pEl, index, relMap, zip) {
+  const images = [];
+  const drawings = pEl.getElementsByTagNameNS(DRAWING_NS, 'inline');
+  const anchorDrawings = pEl.getElementsByTagNameNS(DRAWING_NS, 'anchor');
+
+  const allDrawings = [];
+  for (let i = 0; i < drawings.length; i++) allDrawings.push({ el: drawings[i], type: 'inline' });
+  for (let i = 0; i < anchorDrawings.length; i++) allDrawings.push({ el: anchorDrawings[i], type: 'anchor' });
+
+  for (let i = 0; i < allDrawings.length; i++) {
+    const { el: drawingEl } = allDrawings[i];
+
+    // Get extent (dimensions in EMUs)
+    const extent = drawingEl.getElementsByTagNameNS(A_NS, 'extent')[0];
+    let cx = extent ? extent.getAttribute('cx') : null;
+    let cy = extent ? extent.getAttribute('cy') : null;
+
+    // Convert EMU to pixels (1 px = 9525 EMU at 96 DPI)
+    const widthPx = cx ? Math.round(parseInt(cx, 10) / 9525) : null;
+    const heightPx = cy ? Math.round(parseInt(cy, 10) / 9525) : null;
+
+    // Get alt text / description
+    const docPr = drawingEl.getElementsByTagNameNS(DRAWING_NS, 'docPr')[0];
+    const altText = docPr ? (docPr.getAttribute('descr') || docPr.getAttribute('name') || '') : '';
+
+    // Find the blip element with r:embed
+    const blips = drawingEl.getElementsByTagNameNS(A_NS, 'blip');
+    if (!blips.length) continue;
+
+    const blip = blips[0];
+    const embedId = blip.getAttributeNS(R_NS, 'embed') || blip.getAttribute('r:embed');
+    if (!embedId) continue;
+
+    const mediaPath = relMap.get(embedId);
+    if (!mediaPath) continue;
+
+    // Read image binary and convert to base64 data URL
+    const imgBuf = zip.file(mediaPath);
+    if (!imgBuf) continue;
+
+    const base64 = imgBuf.asNodeBuffer().toString('base64');
+    const ext = mediaPath.split('.').pop().toLowerCase();
+    const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'bmp' ? 'image/bmp' : ext === 'svg' ? 'image/svg+xml' : 'image/jpeg';
+    const dataUrl = 'data:' + mime + ';base64,' + base64;
+
+    const text = getParagraphText(pEl).trim();
+    const id = 'img-' + String(index).padStart(4, '0') + (i > 0 ? '-' + i : '');
+
+    images.push({
+      id,
+      type: 'image',
+      role: 'unknown',
+      text: text || altText || '(图片)',
+      dataUrl,
+      mime,
+      widthPx,
+      heightPx,
+      altText: altText || null,
+      location: {
+        pageIndex: Math.floor(index / 40),
+        order: index,
+      },
+    });
+  }
+
+  return images;
+}
+
+/**
  * Extract all blocks (paragraphs and tables) from a DOCX file.
  * @param {string} inputPath - Path to the DOCX file
  * @returns {{ blocks: Block[], styleList: Array }}
@@ -284,6 +439,7 @@ function extractBlocks(inputPath) {
     return { blocks: [], styleList: extractStylesSummary(zip) };
   }
 
+  const relMap = buildImageRelMap(zip);
   const children = childArray(body);
   const blocks = [];
   let blockIndex = 0;
@@ -292,8 +448,43 @@ function extractBlocks(inputPath) {
     if (child.nodeType !== 1) continue;
 
     if (child.localName === 'p') {
-      blocks.push(extractParagraphBlock(child, blockIndex, styleMap));
-      blockIndex++;
+      // Check for drawing images (wp:inline / wp:anchor)
+      const hasDrawings = child.getElementsByTagNameNS(DRAWING_NS, 'inline').length ||
+                          child.getElementsByTagNameNS(DRAWING_NS, 'anchor').length;
+      // Check for VML images (w:pict > v:imagedata)
+      const picts = child.getElementsByTagNameNS(W_NS, 'pict');
+      let hasVmlImages = false;
+      for (let pi = 0; pi < picts.length; pi++) {
+        if (picts[pi].getElementsByTagNameNS('urn:schemas-microsoft-com:vml', 'imagedata').length) {
+          hasVmlImages = true;
+          break;
+        }
+      }
+
+      if (hasDrawings) {
+        const imgBlocks = extractImagesFromParagraph(child, blockIndex, relMap, zip);
+        for (const img of imgBlocks) {
+          blocks.push(img);
+          blockIndex++;
+        }
+      }
+      if (hasVmlImages) {
+        const vmlBlocks = extractVmlImagesFromParagraph(child, blockIndex, relMap, zip);
+        for (const img of vmlBlocks) {
+          blocks.push(img);
+          blockIndex++;
+        }
+      }
+
+      // Add the paragraph text block if there's text, or if no images were found
+      const text = getParagraphText(child);
+      if (text) {
+        blocks.push(extractParagraphBlock(child, blockIndex, styleMap));
+        blockIndex++;
+      } else if (!hasDrawings && !hasVmlImages) {
+        blocks.push(extractParagraphBlock(child, blockIndex, styleMap));
+        blockIndex++;
+      }
     } else if (child.localName === 'tbl') {
       blocks.push(extractTableBlock(child, blockIndex, styleMap));
       blockIndex++;
@@ -439,4 +630,7 @@ module.exports = {
   extractStylesSummary,
   clusterBlocks,
   generateProfile,
+  buildImageRelMap,
+  extractImagesFromParagraph,
+  extractVmlImagesFromParagraph,
 };
