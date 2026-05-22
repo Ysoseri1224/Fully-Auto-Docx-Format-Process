@@ -1,6 +1,7 @@
 <p align="center">
   <h1 align="center">WriteMaster</h1>
-  <p align="center"><strong>把 Markdown 或 DOCX 转成指定母版风格的 DOCX</strong> — 统一 OOXML 规则后处理，支持 CLI / 单文件 / Electron 桌面三种入口。</p>
+  <p align="center"><strong>把 Markdown 或 DOCX 转成指定母版风格的 DOCX</strong> 
+    — 统一 OOXML 规则后处理，支持 CLI / 单文件 / Electron 桌面三种入口。</p>
 </p>
 
 <p align="center">
