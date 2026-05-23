@@ -1146,7 +1146,7 @@ function bindEvents() {
   el.refreshMasters.addEventListener('click', refreshMasters);
 
   el.aboutBtn.addEventListener('click', () => {
-    window.alert('WriteMaster v0.5.0\n\n统一 DOCX 格式整理工作流工具\n\n功能：\n• Markdown / DOCX → 标准化 DOCX 输出\n• 母版结构提取与段落语义标注\n• 自动样式聚类与 Profile 配置\n• 编号解析、docDefaults 字体回退\n\n入口：CLI / Node bundle / Electron 桌面版\n\nGitHub: https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process');
+    window.alert('WriteMaster v0.5.1\n\n统一 DOCX 格式整理工作流工具\n\n功能：\n• Markdown / DOCX → 标准化 DOCX 输出\n• 母版结构提取与段落语义标注\n• 自动样式聚类与 Profile 配置\n• 编号解析、docDefaults 字体回退\n\n入口：CLI / Node bundle / Electron 桌面版\n\nGitHub: https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process');
   });
 
   // --- Extraction event handlers ---

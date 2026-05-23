@@ -12,7 +12,7 @@
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg" />
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" />
   <img alt="Node" src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.5.0-blue" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.5.1-blue" />
 </p>
 
 <p align="center">

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1
+
+### Pandoc 按需自动下载
+- Electron md 模式运行前自动检测 Pandoc，缺失时弹出确认框一键下载安装
+- 下载到 `%LOCALAPPDATA%/WriteMaster/pandoc/`，后续自动引用
+- CLI 缺失时打印友好错误信息 + 安装链接（不再报原始 ENOENT）
+- 新增 `src/core/pandoc.js` 统一管理 Pandoc 解析、检测、下载逻辑
+
 ## 0.5.0
 
 ### 新增母版

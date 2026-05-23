@@ -1,6 +1,6 @@
 {
   "name": "writemaster",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Unified DOCX formatting workflow with CLI, Node single-file, Electron, and Rust wrappers.",
   "type": "commonjs",
   "bin": {
