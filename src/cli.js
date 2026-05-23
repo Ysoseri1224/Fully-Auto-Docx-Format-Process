@@ -13,7 +13,7 @@ Usage:
 
 Optional:
   --out <file.docx>       Write to an explicit output path
-  --master <file.docx>    Override the review master template
+  --master <file>         Override the review master template (.docx or .doc)
   --master-id <id>        Choose a built-in master template
   --pandoc <path>         Override the pandoc executable for --md
   --backup-md <file.md>   Optional backup markdown for table recovery

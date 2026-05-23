@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 const PizZip = require('pizzip');
 const { DOMParser, XMLSerializer } = require('xmldom');
 const embeddedMasters = require('../generated/embedded-masters');
@@ -77,6 +78,52 @@ function ensureEmbeddedMasterFile(masterId) {
   return fp;
 }
 
+function convertDocToDocx(docPath) {
+  const abs = path.resolve(docPath);
+  const hash = crypto.createHash('sha1').update(fs.readFileSync(abs)).digest('hex').slice(0, 12);
+  const cacheDir = path.join(os.tmpdir(), 'writemaster', 'doc-cache');
+  const cached = path.join(cacheDir, `${path.basename(abs, '.doc')}-${hash}.docx`);
+  if (fs.existsSync(cached)) return cached;
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const scriptPath = path.join(cacheDir, `convert-${hash}.ps1`);
+  fs.writeFileSync(scriptPath, [
+    '$ErrorActionPreference = "Stop"',
+    '$word = $null',
+    'try {',
+    '  $word = New-Object -ComObject Word.Application',
+    '  $word.Visible = $false',
+    '  $doc = $word.Documents.Open(\'' + abs + '\')',
+    '  $doc.SaveAs2([ref]\'' + cached + '\', 16)',
+    '  $doc.Close([ref]$false)',
+    '} catch {',
+    '  Write-Error $_.Exception.Message',
+    '  exit 1',
+    '} finally {',
+    '  try { if ($word) { $word.Quit([ref]$false) } } catch {}',
+    '  if ($word) { [System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($word) | Out-Null }',
+    '}',
+  ].join('\r\n'));
+  try {
+    const psExe = fs.existsSync('C:\\Program Files\\PowerShell\\7\\pwsh.exe')
+      ? 'C:\\Program Files\\PowerShell\\7\\pwsh.exe'
+      : 'powershell.exe';
+    execFileSync(psExe, [
+      '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath,
+    ], { stdio: 'pipe', timeout: 60000 });
+  } catch (e) {
+    throw new Error(
+      'Failed to convert .doc to .docx. Microsoft Word is required.\n' +
+      (e.stderr ? e.stderr.toString().trim() : e.message)
+    );
+  } finally {
+    try { fs.unlinkSync(scriptPath); } catch (_) {}
+  }
+  if (!fs.existsSync(cached)) {
+    throw new Error('Word COM conversion produced no output. Is Microsoft Word installed?');
+  }
+  return cached;
+}
+
 function externalizeMasterFile(sourcePath) {
   if (!sourcePath || !fs.existsSync(sourcePath)) return null;
   if (!sourcePath.includes('app.asar')) return sourcePath;
@@ -90,15 +137,21 @@ function externalizeMasterFile(sourcePath) {
   return fp;
 }
 
+function ensureDocx(filePath) {
+  if (!filePath) return filePath;
+  if (path.extname(filePath).toLowerCase() === '.doc') return convertDocToDocx(filePath);
+  return filePath;
+}
+
 function resolveMasterPath(masterInput, legacyCustomPath) {
   if (typeof masterInput === 'string' && !legacyCustomPath) {
-    if (fs.existsSync(masterInput)) return externalizeMasterFile(masterInput);
+    if (fs.existsSync(masterInput)) return ensureDocx(externalizeMasterFile(masterInput));
     const builtIn = findBuiltInMaster(masterInput);
     if (builtIn && builtIn.id === masterInput) {
       const diskPath = findMasterFileOnDisk(builtIn);
-      if (diskPath) return externalizeMasterFile(diskPath);
+      if (diskPath) return ensureDocx(externalizeMasterFile(diskPath));
       const embedded = ensureEmbeddedMasterFile(builtIn.id);
-      if (embedded) return embedded;
+      if (embedded) return ensureDocx(embedded);
     }
   }
 
@@ -107,13 +160,13 @@ function resolveMasterPath(masterInput, legacyCustomPath) {
     : { customPath: legacyCustomPath, masterPath: typeof masterInput === 'string' ? masterInput : undefined };
 
   const customPath = options.customPath || options.masterPath;
-  if (customPath && fs.existsSync(customPath)) return externalizeMasterFile(customPath);
+  if (customPath && fs.existsSync(customPath)) return ensureDocx(externalizeMasterFile(customPath));
 
   const selected = findBuiltInMaster(options.masterId);
   const diskPath = findMasterFileOnDisk(selected);
-  if (diskPath) return externalizeMasterFile(diskPath);
+  if (diskPath) return ensureDocx(externalizeMasterFile(diskPath));
   const embedded = ensureEmbeddedMasterFile(selected.id);
-  if (embedded) return embedded;
+  if (embedded) return ensureDocx(embedded);
   return customPath || path.join(TEMPLATE_DIR_CANDIDATES[0], selected.filename);
 }
 
