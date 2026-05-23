@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.0
+
+### 新增母版
+- 注册 `graduate-thesis`（毕业论文模板1）为第三个内置母版
+- 支持 `.doc` 格式母版：检测到 .doc 时自动调用 Word COM 转换为 .docx（带内容哈希缓存）
+- CLI `--master` 参数和 Electron 母版选择器均支持 .doc 文件
+
+### 目录格式保留
+- TOC 段落（TOC1/TOC2/TOC3/TOC/TOCHeading）跳过分类和样式覆盖，保持原格式
+
+### 角标格式保留
+- `paintRuns` 保留 `w:vertAlign`（上标/下标），文内参考文献 [1][2] 等角标不再丢失
+
+### 表格渲染增强
+- 提取模块：单元格内多段落以换行符连接（而非空格）
+- Electron 预览：表格块渲染为真实 HTML `<table>`（带表头高亮、边框、pre-line 换行）
+- Pipeline 保留原有 `w:tbl` 不破坏
+
+### 修复
+- Electron 侧边栏 logo 路径修正（引用已重命名的 `icon/logo.png`）
+
 ## 0.4.1
 
 ### 编号系统修复

@@ -8,6 +8,7 @@ const { DOMParser, XMLSerializer } = require('xmldom');
 const embeddedMasters = require('../generated/embedded-masters');
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const TOC_STYLES = new Set(['TOC1', 'TOC2', 'TOC3', 'TOC', 'TOCHeading']);
 const MASTER_REGISTRY = [
   {
     id: 'review-master',
@@ -23,6 +24,14 @@ const MASTER_REGISTRY = [
     kind: 'monograph',
     description: '专著章节样式母版。',
     filename: 'chapter10-monograph.docx',
+    isDefault: false,
+  },
+  {
+    id: 'graduate-thesis',
+    label: '毕业论文模板1',
+    kind: 'thesis',
+    description: '毕业论文/设计母版。',
+    filename: 'graduate-thesis.doc',
     isDefault: false,
   },
 ];
@@ -490,8 +499,21 @@ function paintRuns(doc, pEl, styleId, styleRpr) {
     const r = runs[i];
     if (r.parentNode !== pEl) continue;
     const existing = r.getElementsByTagNameNS(W_NS, 'rPr')[0];
-    if (existing) r.removeChild(existing);
-    if (tpl) r.insertBefore(importNode(doc, tpl), r.firstChild);
+    let vertAlign = null;
+    if (existing) {
+      const va = existing.getElementsByTagNameNS(W_NS, 'vertAlign')[0];
+      if (va) vertAlign = va.cloneNode(true);
+      r.removeChild(existing);
+    }
+    if (tpl) {
+      const newRpr = importNode(doc, tpl);
+      if (vertAlign) newRpr.appendChild(vertAlign);
+      r.insertBefore(newRpr, r.firstChild);
+    } else if (vertAlign) {
+      const newRpr = doc.createElementNS(W_NS, 'w:rPr');
+      newRpr.appendChild(vertAlign);
+      r.insertBefore(newRpr, r.firstChild);
+    }
   }
 }
 
@@ -873,6 +895,7 @@ function processReview(options) {
     if (!text) continue;
     if (noteFollowers.has(child)) continue;
     const current = getParagraphStyleId(child);
+    if (TOC_STYLES.has(current)) continue;
     const codeLike = isSqlLikeParagraph(text, current);
     const prev = getPreviousParagraph(child);
     const prevText = prev ? getParagraphText(prev) : '';

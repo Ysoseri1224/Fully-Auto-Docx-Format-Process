@@ -332,6 +332,9 @@
       .block.listLevel1 { font-size: 15px; line-height: 1.9; padding-left: 24px; }
       .block.listLevel2 { font-size: 15px; line-height: 1.9; padding-left: 48px; }
       .block.table { background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-family: Consolas, monospace; font-size: 13px; }
+      .block-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .block-table th, .block-table td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; white-space: pre-line; }
+      .block-table th { background: #f0f4f8; font-weight: 600; }
       .block.image { text-align: center; padding: 12px 8px; cursor: default; }
       .block.image img { border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
       .block.image.selected img { outline: 2px solid var(--accent); }
@@ -423,7 +426,7 @@
   <body>
     <div class="app">
       <aside class="sidebar">
-        <div class="brand"><img src="../icon/ChatGPT Image May 22, 2026, 02_57_50 AM.png" alt="logo" />WriteMaster</div>
+        <div class="brand"><img src="../icon/logo.png" alt="logo" />WriteMaster</div>
         <button class="action" id="primaryAction">应用当前模板</button>
 
         <div class="nav">

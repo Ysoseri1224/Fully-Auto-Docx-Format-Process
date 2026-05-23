@@ -426,7 +426,24 @@ function renderBlockPreview() {
       else if (sn.includes('heading 3')) div.classList.add('heading3');
     }
 
-    if (block.type === 'table') div.classList.add('table');
+    if (block.type === 'table') {
+      div.classList.add('table');
+      if (block.rows && block.rows.length) {
+        div.textContent = '';
+        const table = document.createElement('table');
+        table.className = 'block-table';
+        block.rows.forEach((row, ri) => {
+          const tr = document.createElement('tr');
+          row.forEach(cell => {
+            const td = document.createElement(ri === 0 ? 'th' : 'td');
+            td.textContent = cell;
+            tr.appendChild(td);
+          });
+          table.appendChild(tr);
+        });
+        div.appendChild(table);
+      }
+    }
     if (block.type === 'image') {
       div.classList.add('image');
       div.textContent = '';
@@ -1106,7 +1123,7 @@ function bindEvents() {
   el.refreshMasters.addEventListener('click', refreshMasters);
 
   el.aboutBtn.addEventListener('click', () => {
-    window.alert('WriteMaster v0.4.0\n\n统一 DOCX 格式整理工作流工具\n\n功能：\n• Markdown / DOCX → 标准化 DOCX 输出\n• 母版结构提取与段落语义标注\n• 自动样式聚类与 Profile 配置\n• 编号解析、docDefaults 字体回退\n\n入口：CLI / Node bundle / Electron 桌面版\n\nGitHub: https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process');
+    window.alert('WriteMaster v0.5.0\n\n统一 DOCX 格式整理工作流工具\n\n功能：\n• Markdown / DOCX → 标准化 DOCX 输出\n• 母版结构提取与段落语义标注\n• 自动样式聚类与 Profile 配置\n• 编号解析、docDefaults 字体回退\n\n入口：CLI / Node bundle / Electron 桌面版\n\nGitHub: https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process');
   });
 
   // --- Extraction event handlers ---

@@ -634,12 +634,12 @@ function extractTableBlock(tblEl, index, styleMap) {
     const cells = [];
     const tcEls = trEls[i].getElementsByTagNameNS(W_NS, 'tc');
     for (let j = 0; j < tcEls.length; j++) {
-      let cellText = '';
       const pEls = tcEls[j].getElementsByTagNameNS(W_NS, 'p');
+      const cellParts = [];
       for (let k = 0; k < pEls.length; k++) {
-        cellText += getParagraphText(pEls[k]) + ' ';
+        cellParts.push(getParagraphText(pEls[k]) || '');
       }
-      cells.push(cellText.trim());
+      cells.push(cellParts.join('\n').trim());
     }
     rows.push(cells);
   }
