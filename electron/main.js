@@ -33,7 +33,7 @@ ipcMain.handle('writemaster:pick-file', async (_, { mode }) => {
 ipcMain.handle('writemaster:pick-master-file', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openFile'],
-    filters: [{ name: 'DOCX', extensions: ['docx'] }],
+    filters: [{ name: 'Word Documents', extensions: ['docx', 'doc'] }],
   });
   return result.canceled ? null : result.filePaths[0];
 });
