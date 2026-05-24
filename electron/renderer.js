@@ -43,7 +43,7 @@ const state = {
   reviewApiKey: '',
   reviewBaseUrl: '',
   reviewCCSwitchStatus: null,
-  reviewSelectedSkill: 'anti-ai-review',
+  reviewSelectedSkills: ['anti-ai-review'],
   reviewStreaming: false,
   reviewStreamChunks: '',
   reviewReportMarkdown: '',
@@ -1371,10 +1371,11 @@ function bindEvents() {
     });
   }
 
-  const reviewSkillSelect = document.getElementById('reviewSkillSelect');
-  if (reviewSkillSelect) {
-    reviewSkillSelect.addEventListener('change', () => {
-      state.reviewSelectedSkill = reviewSkillSelect.value;
+  const reviewSkillChecks = document.getElementById('reviewSkillChecks');
+  if (reviewSkillChecks) {
+    reviewSkillChecks.addEventListener('change', () => {
+      const checked = [...reviewSkillChecks.querySelectorAll('input[type="checkbox"]:checked')];
+      state.reviewSelectedSkills = checked.map(cb => cb.value);
     });
   }
 
@@ -1446,9 +1447,11 @@ function renderReviewAuthFields() {
   const ccRow = document.getElementById('reviewCCSwitchRow');
   const keyRow = document.getElementById('reviewApiKeyRow');
   const urlRow = document.getElementById('reviewBaseUrlRow');
+  const modelRow = document.getElementById('reviewModelRow');
   if (ccRow) ccRow.classList.toggle('hidden', state.reviewAuthSource !== 'ccswitch');
   if (keyRow) keyRow.classList.toggle('hidden', state.reviewAuthSource !== 'manual');
   if (urlRow) urlRow.classList.toggle('hidden', state.reviewAuthSource !== 'manual');
+  if (modelRow) modelRow.classList.toggle('hidden', state.reviewAuthSource !== 'manual');
 }
 
 function renderReviewContent() {
@@ -1530,20 +1533,28 @@ async function handleReviewStart() {
   if (!state.reviewFilePath) { showToast('请先上传文件'); return; }
   if (!window.writemaster.reviewStart) return;
 
-  let apiKey, baseUrl;
+  let apiKey, baseUrl, model;
   if (state.reviewAuthSource === 'ccswitch') {
     if (!state.reviewCCSwitchStatus) await refreshCCSwitchStatus();
     if (!state.reviewCCSwitchStatus) { showToast('无法读取 CC Switch 配置'); return; }
     apiKey = state.reviewCCSwitchStatus.apiKey;
     baseUrl = state.reviewCCSwitchStatus.baseUrl;
+    model = state.reviewCCSwitchStatus.model || '';
   } else {
     apiKey = document.getElementById('reviewApiKey').value.trim();
     baseUrl = document.getElementById('reviewBaseUrl').value.trim();
+    model = (document.getElementById('reviewModel') || {}).value || '';
     if (!apiKey) { showToast('请输入 API Key'); return; }
   }
 
-  const skillResult = await window.writemaster.reviewLoadSkillContent(state.reviewSelectedSkill);
-  if (!skillResult.ok) { showToast('加载技能失败: ' + skillResult.error); return; }
+  if (!state.reviewSelectedSkills.length) { showToast('请至少选择一个审阅技能'); return; }
+  const skillContents = [];
+  for (const skillId of state.reviewSelectedSkills) {
+    const skillResult = await window.writemaster.reviewLoadSkillContent(skillId);
+    if (!skillResult.ok) { showToast('加载技能失败: ' + skillResult.error); return; }
+    skillContents.push(skillResult.content);
+  }
+  const mergedSkillContent = skillContents.join('\n\n---\n\n');
 
   state.reviewSubTab = 'report';
   state.reviewStreaming = true;
@@ -1556,7 +1567,8 @@ async function handleReviewStart() {
   const result = await window.writemaster.reviewStart({
     apiKey,
     baseUrl,
-    skillContent: skillResult.content,
+    model,
+    skillContent: mergedSkillContent,
     documentContent: state.reviewFileContent,
   });
   if (!result.ok) {

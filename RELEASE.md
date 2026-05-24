@@ -1,5 +1,48 @@
 # Release Notes
 
+## v0.6.0
+
+重大更新：新增 AI 文稿审阅功能，将 WriteMaster 从格式整理工具升级为格式 + 内容审阅一体化工作台。
+
+### 新功能：文稿审阅
+
+Electron 工作台新增第四视图「文稿审阅」，完整工作流：
+
+1. **上传文稿** — 支持 .md 和 .docx，上传后即时渲染预览
+2. **选择审阅技能** — 多选勾选，内置三个 ContRev 技能：
+   - 去AI痕迹审阅（中文）
+   - 学术润色 Nature Polishing（English）
+   - 学术写作 Nature Writing（English）
+3. **AI 审阅** — 流式调用 Claude API，实时渲染审阅报告
+4. **导出报告** — 一键保存为 .md 文件
+
+### AI 认证方式
+
+- **CC Switch 自动读取**（默认）：直接从本地 CC Switch 数据库获取当前活跃 Claude provider 配置，零配置即用
+- **手动输入**：支持自定义 API Key + 中转站 URL + 模型名，兼容 nowcoding 等第三方中转
+
+### 编号系统修复
+
+- 标题不再出现双重编号（1. 1.1 重复）
+- 列表编号正确重启（每组独立计数）
+- 编号格式不再消失（保留缩进定义）
+
+### 技术栈新增
+
+- `sql.js`（WASM SQLite）— 读取 CC Switch 配置，无需 native addon
+- `marked`（Markdown 渲染）— 文稿预览 + 报告展示
+
+### 已验证
+
+- CC Switch 配置读取（API Key + Base URL + Model）
+- .md / .docx 文件上传与渲染
+- 多技能勾选与合并
+- 流式审阅输出与中途停止
+- 报告导出
+- 编号修复（review-master + chapter10-monograph 母版）
+
+---
+
 ## v0.1.0
 
 首个可公开整理版本，提供同一套核心流程的四种入口形态（CLI / 单文件 Bundle / Electron 桌面 / Rust 包装）。

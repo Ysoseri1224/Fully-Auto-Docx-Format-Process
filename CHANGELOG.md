@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.6.0
+
+### 文稿审阅（全新功能）
+- 新增第四视图「文稿审阅」，支持上传 .md / .docx 文件并渲染预览
+- 集成 AI 审阅：基于 ContRev 技能库（去AI痕迹审阅、学术润色、学术写作）生成审阅报告
+- 多技能勾选：可同时选择多个审阅技能，合并为组合 system prompt
+- 流式输出：SSE 实时渲染审阅报告，支持中途停止
+- 审阅报告导出为 .md 文件
+- Markdown 渲染引擎（marked.js）用于文稿预览和报告展示
+
+### AI 认证
+- 自动读取 CC Switch 配置（SQLite 数据库）获取当前 Claude provider 的 API Key、Base URL、Model
+- 支持手动输入 API Key + 中转站 URL + 模型名作为备选
+- 模型名不再硬编码，优先使用配置中的模型，兼容各类中转站
+
+### 新增依赖
+- `sql.js` — 纯 WASM SQLite 读取器，无需 native rebuild
+- `marked` — 轻量 Markdown → HTML 渲染
+
+### 编号系统修复
+- 修复标题双重编号：patchHeadingStyles 覆盖 Heading 1 样式
+- 修复 numId=0 被误判为孤立编号（validNumIds 集合补充 '0'）
+- 修复列表编号不重启：孤立列表组边界检测，每组分配独立 numId
+- 修复编号消失：abstractNum 保留 w:ind（left=0/hanging=0）+ w:suff=nothing
+
 ## 0.5.1
 
 ### Pandoc 按需自动下载

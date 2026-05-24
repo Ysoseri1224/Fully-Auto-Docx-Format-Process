@@ -698,13 +698,24 @@
                     <input id="reviewBaseUrl" placeholder="https://nowcoding.ai" />
                     <span></span>
                   </div>
+                  <div class="form-grid hidden" id="reviewModelRow">
+                    <label>模型</label>
+                    <input id="reviewModel" placeholder="claude-sonnet-4-20250514" />
+                    <span></span>
+                  </div>
                   <div class="form-grid">
                     <label>审阅技能</label>
-                    <select id="reviewSkillSelect">
-                      <option value="anti-ai-review">去AI痕迹审阅 (中文)</option>
-                      <option value="nature-polishing">学术润色 (English)</option>
-                      <option value="nature-writing">学术写作 (English)</option>
-                    </select>
+                    <div id="reviewSkillChecks" style="display:flex;flex-direction:column;gap:6px;">
+                      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer;">
+                        <input type="checkbox" value="anti-ai-review" checked /> 去AI痕迹审阅 (中文)
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer;">
+                        <input type="checkbox" value="nature-polishing" /> 学术润色 (English)
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer;">
+                        <input type="checkbox" value="nature-writing" /> 学术写作 (English)
+                      </label>
+                    </div>
                     <span></span>
                   </div>
                   <div style="display:flex;gap:8px;margin-top:12px;">

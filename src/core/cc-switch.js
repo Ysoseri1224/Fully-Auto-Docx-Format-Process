@@ -44,6 +44,7 @@ async function readCCSwitchConfig() {
     const env = config.env || {};
     const apiKey = env.ANTHROPIC_AUTH_TOKEN;
     const baseUrl = env.ANTHROPIC_BASE_URL;
+    const model = env.ANTHROPIC_MODEL;
 
     if (!apiKey) {
       return { error: 'Provider 配置中未找到 API Key' };
@@ -52,6 +53,7 @@ async function readCCSwitchConfig() {
     return {
       apiKey,
       baseUrl: baseUrl || 'https://api.anthropic.com',
+      model: model || '',
       providerName: row.name || currentProviderId,
     };
   } catch (err) {

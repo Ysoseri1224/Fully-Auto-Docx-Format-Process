@@ -4,15 +4,15 @@
 
 <p align="center">
   <h1 align="center">WriteMaster</h1>
-  <p align="center"><strong>把 Markdown 或 DOCX 转成指定母版风格的 DOCX</strong> </p>
-  <p align="center">  统一 OOXML 规则后处理，支持 CLI / 单文件 / Electron 桌面三种入口。</p>
+  <p align="center"><strong>DOCX 格式整理 + AI 文稿审阅一体化工作台</strong></p>
+  <p align="center">Markdown / DOCX → 母版风格输出，内置 AI 审阅技能，支持 CLI / 单文件 / Electron 桌面。</p>
 </p>
 
 <p align="center">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg" />
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" />
   <img alt="Node" src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.5.1-blue" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-blue" />
 </p>
 
 <p align="center">
@@ -47,7 +47,10 @@ node src/cli.js --md ./test/your-file.md --master-id review-master
 |------|------|
 | **Markdown → DOCX** | Pandoc 转换 + OOXML 母版样式应用 |
 | **DOCX 整理输出** | 对已有 DOCX 进行样式覆盖、段落分类、编号重排 |
-| **多母版支持** | 内置 `review-master`（教材）和 `chapter10-monograph`（专著），支持自定义外部母版 |
+| **AI 文稿审阅** | 上传 .md/.docx → 选择审阅技能（多选）→ AI 流式生成审阅报告 → 导出 .md |
+| **多母版支持** | 内置 `review-master`、`chapter10-monograph`、`graduate-thesis`，支持自定义外部母版 |
+| **审阅技能库** | ContRev 内置：去AI痕迹审阅、学术润色（English）、学术写作（English） |
+| **CC Switch 集成** | 自动读取本地 CC Switch 数据库获取 Claude API 配置，零配置即用 |
 | **智能段落分类** | 自动识别标题层级、正文、图题/表题、代码块、提示说明块 |
 | **表格恢复** | 从 Markdown 源文件重建丢失的表格结构 |
 | **编号系统** | 完整 numbering.xml 解析：decimal、括号编号、圈号编号、bullet、中文计数，支持样式继承编号 |
@@ -56,7 +59,7 @@ node src/cli.js --md ./test/your-file.md --master-id review-master
 | **模板提取工作台** | Electron 内可视化提取母版结构，右键标注语义角色，自动聚类临时样式 |
 | **Profile 配置** | 将样式映射保存为可复用配置，支持导入/导出 JSON |
 | **单文件 Bundle** | 内嵌母版 base64 的独立 `.cjs` 文件，无需 `node_modules` |
-| **Electron 桌面** | 三视图 Workbench（应用任务 / 模板提取 / Profile 配置），Word 风格蓝白 UI，便携版 EXE |
+| **Electron 桌面** | 四视图 Workbench（应用任务 / 模板提取 / Profile 配置 / 文稿审阅），Word 风格蓝白 UI，便携版 EXE |
 | **Rust CLI 包装** | 零依赖的薄包装层，调用 Node 核心 |
 
 ---
@@ -121,6 +124,7 @@ writemaster --docx <file.docx> [name]
 |----|------|------|------|
 | `review-master` | 教材 Review 母版 | review | 是 |
 | `chapter10-monograph` | 第 10 章专著母版 | monograph | 否 |
+| `graduate-thesis` | 毕业论文模板 | thesis | 否 |
 
 ---
 
@@ -131,11 +135,12 @@ npm run electron           # 开发模式
 npm run electron:portable  # 构建便携版 EXE
 ```
 
-三视图：
+四视图：
 
 1. **应用任务** — Markdown→DOCX 或 DOCX 整理，选择母版/Profile，一键运行
 2. **模板提取** — 上传母版 DOCX，解析段落结构，右键标注语义角色，自动聚类生成 Profile
 3. **Profile 配置** — 管理已保存的样式映射，编辑/导入/导出 JSON
+4. **文稿审阅** — 上传 .md/.docx 文稿，选择审阅技能（多选），AI 流式生成审阅报告，导出 .md
 
 ---
 
@@ -159,19 +164,28 @@ WriteMaster/
 │   ├── cli.js                  # CLI 入口
 │   ├── cli-single-file.js      # 单文件 bundle 入口
 │   ├── core/
-│   │   ├── review.js           # OOXML review 后处理核心（~760 行）
+│   │   ├── review.js           # OOXML review 后处理核心
 │   │   ├── build.js            # md → temp.docx → review.docx 管线
-│   │   └── extract.js          # DOCX 结构提取 + 聚类 + Profile 生成
+│   │   ├── extract.js          # DOCX 结构提取 + 聚类 + Profile 生成
+│   │   ├── pandoc.js           # Pandoc 检测 + 自动下载
+│   │   └── cc-switch.js        # CC Switch SQLite 配置读取
 │   └── generated/
 │       └── embedded-masters.js # 占位文件（构建时注入 base64）
 ├── electron/                   # Electron 桌面应用
 │   ├── main.js                 # 主进程 + IPC handlers
 │   ├── preload.js              # contextBridge API
 │   ├── renderer.js             # 前端状态管理与渲染
-│   └── index.html              # Workbench 三视图 UI
+│   ├── index.html              # Workbench 四视图 UI
+│   └── lib/
+│       └── marked.min.js       # Markdown 渲染库
+├── ContRev/                    # AI 审阅技能库
+│   ├── anti-ai-review/         # 去AI痕迹审阅
+│   ├── nature-polishing/       # 学术润色
+│   └── nature-writing/         # 学术写作
 ├── templates/                  # 内置母版 DOCX
 │   ├── review-master.docx
-│   └── chapter10-monograph.docx
+│   ├── chapter10-monograph.docx
+│   └── graduate-thesis.docx
 ├── scripts/
 │   └── build-single-file.js    # esbuild 单文件打包
 ├── rust-wrapper/               # Rust CLI 包装层
@@ -193,6 +207,9 @@ WriteMaster/
 |----|------|
 | OOXML 操作 | [PizZip](https://github.com/open-xml-templating/pizzip) + [xmldom](https://github.com/xmldom/xmldom) |
 | Markdown 转换 | [Pandoc](https://pandoc.org/)（外部依赖，仅 md 模式） |
+| Markdown 渲染 | [marked](https://github.com/markedjs/marked)（浏览器端预览 + 报告展示） |
+| SQLite 读取 | [sql.js](https://github.com/sql-js/sql.js)（WASM，读取 CC Switch 配置） |
+| AI 审阅 | Claude API（SSE 流式，支持中转站） |
 | 打包 | [esbuild](https://esbuild.github.io/) (bundle) + [electron-builder](https://www.electron.build/) (portable) |
 | 桌面 | [Electron](https://www.electronjs.org/) |
 | Rust CLI | [clap](https://docs.rs/clap/) |

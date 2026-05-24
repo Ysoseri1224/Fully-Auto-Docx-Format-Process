@@ -348,14 +348,14 @@ ipcMain.handle('writemaster:review-load-skill-content', async (_, { skillId }) =
 
 let activeReviewReq = null;
 
-ipcMain.handle('writemaster:review-start', async (event, { apiKey, baseUrl, skillContent, documentContent }) => {
+ipcMain.handle('writemaster:review-start', async (event, { apiKey, baseUrl, model, skillContent, documentContent }) => {
   const https = require('https');
   const http = require('http');
   const { URL } = require('url');
   const win = BrowserWindow.fromWebContents(event.sender);
 
   const body = JSON.stringify({
-    model: 'claude-sonnet-4-20250514',
+    model: model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
     max_tokens: 8192,
     stream: true,
     system: skillContent,
