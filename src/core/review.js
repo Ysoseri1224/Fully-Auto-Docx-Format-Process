@@ -701,7 +701,16 @@ function findOrCreateAbstractNum(numDoc, numFmt, lvlText) {
       const t = txtEl && txtEl.getAttribute('w:val');
       if (f === numFmt && t === lvlText) {
         const indEl = lvls[j].getElementsByTagNameNS(W_NS, 'ind')[0];
-        if (indEl) lvls[j].removeChild(indEl);
+        if (indEl) {
+          indEl.setAttribute('w:left', '0');
+          indEl.setAttribute('w:hanging', '0');
+        }
+        let suffEl = lvls[j].getElementsByTagNameNS(W_NS, 'suff')[0];
+        if (!suffEl) {
+          suffEl = numDoc.createElementNS(W_NS, 'w:suff');
+          lvls[j].appendChild(suffEl);
+        }
+        suffEl.setAttribute('w:val', 'nothing');
         return parseInt(abs[i].getAttribute('w:abstractNumId'), 10);
       }
     }
@@ -723,6 +732,9 @@ function findOrCreateAbstractNum(numDoc, numFmt, lvlText) {
   const jcEl = numDoc.createElementNS(W_NS, 'w:lvlJc');
   jcEl.setAttribute('w:val', 'left');
   lvl.appendChild(jcEl);
+  const suffEl = numDoc.createElementNS(W_NS, 'w:suff');
+  suffEl.setAttribute('w:val', 'nothing');
+  lvl.appendChild(suffEl);
   absEl.appendChild(lvl);
   const firstNum = numDoc.getElementsByTagNameNS(W_NS, 'num')[0];
   if (firstNum) {
