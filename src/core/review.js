@@ -519,7 +519,7 @@ function paintRuns(doc, pEl, styleId, styleRpr) {
 
 function classify(text, currentStyleId, styleIds, prevIsCode) {
   if (!text) return null;
-  if (text === '应用篇' || /^项目[一二三四五六七八九十0-9]/.test(text)) return '1';
+  if (text === '应用篇' || /^项目[一二三四五六七八九十0-9]/.test(text) || /^第\d+章\s/.test(text)) return '1';
   if (/^\[[^\]]+\]$/.test(text) && !prevIsCode && !/^\[公式/.test(text) && !/^\[图/.test(text) && !/^\[表/.test(text)) {
     if (/^任务\s*\d+/.test(text) || /^\d+\.\d+\s/.test(text)) return '2';
     return '2';
@@ -699,6 +699,8 @@ function findOrCreateAbstractNum(numDoc, numFmt, lvlText) {
       const f = fmtEl && fmtEl.getAttribute('w:val');
       const t = txtEl && txtEl.getAttribute('w:val');
       if (f === numFmt && t === lvlText) {
+        const indEl = lvls[j].getElementsByTagNameNS(W_NS, 'ind')[0];
+        if (indEl) lvls[j].removeChild(indEl);
         return parseInt(abs[i].getAttribute('w:abstractNumId'), 10);
       }
     }
@@ -968,6 +970,28 @@ function processReview(options) {
   const absParenId = findOrCreateAbstractNum(numberingDoc, 'decimal', '（%1）');
   const absDotId = findOrCreateAbstractNum(numberingDoc, 'decimal', '%1.');
   const absCircledId = findOrCreateAbstractNum(numberingDoc, 'decimalEnclosedCircleChinese', '%1　');
+
+  // Fix orphaned numPr: Pandoc-generated numIds lost after master copy
+  const validNumIds = new Set();
+  const numEls = numberingDoc.getElementsByTagNameNS(W_NS, 'num');
+  for (let i = 0; i < numEls.length; i++) validNumIds.add(numEls[i].getAttribute('w:numId'));
+  let orphanDotNumId = null;
+  for (const p of paras) {
+    const pPr = p.getElementsByTagNameNS(W_NS, 'pPr')[0];
+    if (!pPr) continue;
+    const numPr = pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
+    if (!numPr) continue;
+    const numIdEl = numPr.getElementsByTagNameNS(W_NS, 'numId')[0];
+    if (!numIdEl) continue;
+    const nid = numIdEl.getAttribute('w:val');
+    if (nid && !validNumIds.has(nid)) {
+      if (!orphanDotNumId) orphanDotNumId = cloneNum(numberingDoc, absDotId);
+      numIdEl.setAttribute('w:val', String(orphanDotNumId));
+      const indEl = pPr.getElementsByTagNameNS(W_NS, 'ind')[0];
+      if (indEl) pPr.removeChild(indEl);
+    }
+  }
+
   let section = null;
   let groupNumId = null;
   let childNumId = null;
