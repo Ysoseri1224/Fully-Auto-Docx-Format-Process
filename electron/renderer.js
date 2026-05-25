@@ -1168,8 +1168,28 @@ function bindEvents() {
   el.resetTask.addEventListener('click', resetTask);
   el.refreshMasters.addEventListener('click', refreshMasters);
 
-  el.aboutBtn.addEventListener('click', () => {
-    window.alert('WriteMaster v0.5.1\n\n统一 DOCX 格式整理工作流工具\n\n功能：\n• Markdown / DOCX → 标准化 DOCX 输出\n• 母版结构提取与段落语义标注\n• 自动样式聚类与 Profile 配置\n• 编号解析、docDefaults 字体回退\n\n入口：CLI / Node bundle / Electron 桌面版\n\nGitHub: https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process');
+  el.aboutBtn.addEventListener('click', async () => {
+    const ver = await window.writemaster.getVersion();
+    window.alert(`WriteMaster v${ver}\n\n统一 DOCX 格式整理工作流工具\n\n功能：\n• Markdown / DOCX → 标准化 DOCX 输出\n• 母版结构提取与段落语义标注\n• 自动样式聚类与 Profile 配置\n• 编号解析、docDefaults 字体回退\n\n入口：CLI / Node bundle / Electron 桌面版\n\nGitHub: https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process`);
+  });
+
+  // --- Auto-update status ---
+  window.writemaster.getVersion().then(ver => {
+    el.aboutBtn.title = `关于 WriteMaster v${ver}`;
+  });
+  window.writemaster.onUpdateStatus((status) => {
+    if (status.type === 'available') {
+      el.aboutBtn.textContent = 'i!';
+      el.aboutBtn.title = `新版本 v${status.version} 可用，正在下载...`;
+    } else if (status.type === 'downloaded') {
+      el.aboutBtn.textContent = 'i!';
+      el.aboutBtn.title = `v${status.version} 已下载，点击查看`;
+      el.aboutBtn.onclick = () => {
+        if (window.confirm(`新版本 v${status.version} 已下载完成。\n\n立即重启并安装更新？`)) {
+          window.writemaster.installUpdate();
+        }
+      };
+    }
   });
 
   // --- Extraction event handlers ---

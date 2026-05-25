@@ -12,7 +12,7 @@
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg" />
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" />
   <img alt="Node" src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-blue" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.6.2-blue" />
 </p>
 
 <p align="center">
@@ -50,7 +50,8 @@ node src/cli.js --md ./test/your-file.md --master-id review-master
 | **AI 文稿审阅** | 上传 .md/.docx → 选择审阅技能（多选）→ AI 流式生成审阅报告 → 导出 .md |
 | **多母版支持** | 内置 `review-master`、`chapter10-monograph`、`graduate-thesis`，支持自定义外部母版 |
 | **审阅技能库** | ContRev 内置：去AI痕迹审阅、学术润色（English）、学术写作（English） |
-| **CC Switch 集成** | 自动读取本地 CC Switch 数据库获取 Claude API 配置，零配置即用 |
+| **CC Switch 集成** | 自动读取本地 CC Switch 数据库获取 API 配置，支持 Claude + OpenAI 兼容格式，零配置即用 |
+| **自动更新** | NSIS 安装版启动时自动检查 GitHub Releases，后台下载新版本，重启即完成更新 |
 | **智能段落分类** | 自动识别标题层级、正文、图题/表题、代码块、提示说明块 |
 | **表格恢复** | 从 Markdown 源文件重建丢失的表格结构 |
 | **编号系统** | 完整 numbering.xml 解析：decimal、括号编号、圈号编号、bullet、中文计数，支持样式继承编号 |
@@ -209,8 +210,9 @@ WriteMaster/
 | Markdown 转换 | [Pandoc](https://pandoc.org/)（外部依赖，仅 md 模式） |
 | Markdown 渲染 | [marked](https://github.com/markedjs/marked)（浏览器端预览 + 报告展示） |
 | SQLite 读取 | [sql.js](https://github.com/sql-js/sql.js)（WASM，读取 CC Switch 配置） |
-| AI 审阅 | Claude API（SSE 流式，支持中转站） |
-| 打包 | [esbuild](https://esbuild.github.io/) (bundle) + [electron-builder](https://www.electron.build/) (portable) |
+| AI 审阅 | Claude / OpenAI 兼容 API（SSE 流式，支持中转站） |
+| 自动更新 | [electron-updater](https://www.electron.build/auto-update)（GitHub Releases） |
+| 打包 | [esbuild](https://esbuild.github.io/) (bundle) + [electron-builder](https://www.electron.build/) (portable + NSIS) |
 | 桌面 | [Electron](https://www.electronjs.org/) |
 | Rust CLI | [clap](https://docs.rs/clap/) |
 

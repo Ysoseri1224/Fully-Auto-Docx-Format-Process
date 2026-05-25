@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.6.2
+
+### 自动更新
+- 接入 electron-updater，NSIS 安装版启动时自动检查 GitHub Releases 新版本
+- 后台静默下载，下载完成后提示用户重启安装
+- "关于"按钮动态显示当前版本号（不再硬编码），有更新时显示提示标记
+
+### 多 Provider 支持
+- AI 审阅支持 OpenAI 兼容格式（DeepSeek、GPT 等中转站），不再限于 Claude
+- CC Switch 自动识别 provider 格式（Anthropic / OpenAI），手动模式可选 API 格式
+- 双格式 SSE 流式解析：Anthropic content_block_delta + OpenAI choices delta
+
+### 编号系统修复
+- 修复段落内编号 `（1）（2）（3）` 不递增（全部显示为重复的 1.）的问题
+- 修复 `1. 2. 3.` 顶级编号不递增的问题（中间的普通段落不再打断编号分组）
+- 每个父级 `N.` 下的子级 `（1）（2）（3）` 现在正确重新从（1）开始编号
+
+### 字体修复
+- 一级标题：黑体三号（sz=32），二级标题：黑体四号（sz=28），三级标题：黑体小四（sz=24）
+- 正文中文统一宋体，英文统一 Times New Roman（run 级别强制应用）
+
+### Release 工作流
+- electron-builder 改为 `--publish=always`，自动生成 latest.yml 供 autoUpdater 使用
+- ContRev 技能目录打包进 Electron 发布包
+
 ## 0.6.0
 
 ### 文稿审阅（全新功能）

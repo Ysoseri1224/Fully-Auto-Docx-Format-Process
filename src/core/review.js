@@ -1037,13 +1037,22 @@ function processReview(options) {
   let prevWasOrphan = false;
   for (const p of paras) {
     const pPr = p.getElementsByTagNameNS(W_NS, 'pPr')[0];
-    if (!pPr) { prevWasOrphan = false; continue; }
+    if (!pPr) continue;
     const numPr = pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
-    if (!numPr) { prevWasOrphan = false; continue; }
+    if (!numPr) {
+      const sid = getParagraphStyleId(p);
+      if (sid === '1' || sid === '2' || sid === '3') prevWasOrphan = false;
+      continue;
+    }
     const numIdEl = numPr.getElementsByTagNameNS(W_NS, 'numId')[0];
-    if (!numIdEl) { prevWasOrphan = false; continue; }
+    if (!numIdEl) continue;
     const nid = numIdEl.getAttribute('w:val');
     if (nid && !validNumIds.has(nid)) {
+      const pText = getParagraphText(p);
+      if (/^[（(]\d+[）)]/.test(pText) || /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(pText)) {
+        pPr.removeChild(numPr);
+        continue;
+      }
       if (!prevWasOrphan) orphanDotNumId = cloneNum(numberingDoc, absDotId);
       numIdEl.setAttribute('w:val', String(orphanDotNumId));
       const indEl = pPr.getElementsByTagNameNS(W_NS, 'ind')[0];
@@ -1137,24 +1146,32 @@ function processReview(options) {
         continue;
       }
     }
-    if (!section && /^[（(]\d+[）)]/.test(text)) {
-      if (!bodyNumId) bodyNumId = cloneNum(numberingDoc, absParenId);
-      setParagraphStyle(doc, p, styleIds.body);
-      cleanPPr(p);
-      paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
-      rewriteTextRuns(doc, p, stripLeadingParen(text), styleIds.body, styleMap.styleRpr);
-      setNumPr(doc, p, bodyNumId);
-      bodyCircledNumId = null;
-      continue;
-    }
-    if (!section && /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(text)) {
-      if (!bodyCircledNumId) bodyCircledNumId = cloneNum(numberingDoc, absCircledId);
-      setParagraphStyle(doc, p, styleIds.body);
-      cleanPPr(p);
-      paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
-      rewriteTextRuns(doc, p, stripLeadingCircled(text), styleIds.body, styleMap.styleRpr);
-      setNumPr(doc, p, bodyCircledNumId);
-      continue;
+    if (!section) {
+      const pPr = p.getElementsByTagNameNS(W_NS, 'pPr')[0];
+      const hasNumPr = pPr && pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
+      if (/^[（(]\d+[）)]/.test(text)) {
+        if (!bodyNumId) bodyNumId = cloneNum(numberingDoc, absParenId);
+        setParagraphStyle(doc, p, styleIds.body);
+        cleanPPr(p);
+        paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
+        rewriteTextRuns(doc, p, stripLeadingParen(text), styleIds.body, styleMap.styleRpr);
+        setNumPr(doc, p, bodyNumId);
+        bodyCircledNumId = null;
+        continue;
+      }
+      if (/^[①②③④⑤⑥⑦⑧⑨⑩]/.test(text)) {
+        if (!bodyCircledNumId) bodyCircledNumId = cloneNum(numberingDoc, absCircledId);
+        setParagraphStyle(doc, p, styleIds.body);
+        cleanPPr(p);
+        paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
+        rewriteTextRuns(doc, p, stripLeadingCircled(text), styleIds.body, styleMap.styleRpr);
+        setNumPr(doc, p, bodyCircledNumId);
+        continue;
+      }
+      if (hasNumPr) {
+        bodyNumId = null;
+        bodyCircledNumId = null;
+      }
     }
   }
 

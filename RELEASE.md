@@ -1,5 +1,41 @@
 # Release Notes
 
+## v0.6.2
+
+### 自动更新
+
+Electron 桌面版（NSIS 安装版）现在支持自动更新：
+
+- 启动时自动检查 GitHub Releases 是否有新版本
+- 新版本后台静默下载，下载完成后提示"重启即可更新"
+- "关于"按钮（左下角 i）动态显示当前版本号，有更新时显示提示标记
+- Portable 版不支持自动更新，会引导用户手动下载
+
+### 多 Provider AI 审阅
+
+- 支持 OpenAI 兼容格式（DeepSeek、GPT、各类中转站），不再限于 Claude
+- CC Switch 自动识别 provider 类型：env 中有 `ANTHROPIC_AUTH_TOKEN` → Anthropic 格式，有 `OPENAI_API_KEY` 或其他 key → OpenAI 兼容格式
+- 手动模式新增 API 格式选择（OpenAI 兼容 / Anthropic）
+- 双格式 SSE 流式解析完整实现
+
+### 编号系统修复
+
+- `1. 2. 3.` 顶级编号正确递增（不再全部显示为 1.）
+- `（1）（2）（3）` 子级编号在每个父级下正确重新从（1）开始
+- 层级关系：`1.` → `（1）` → `①`，各级独立编号
+
+### 字体规范化
+
+- 标题：黑体，一级三号/二级四号/三级小四，run 级别强制应用
+- 正文：中文宋体 + 英文 Times New Roman，run 级别强制应用
+
+### Release 工作流优化
+
+- electron-builder `--publish=always`：自动上传安装包 + 生成 `latest.yml`
+- ContRev 技能目录打包进发布包
+
+---
+
 ## v0.6.0
 
 重大更新：新增 AI 文稿审阅功能，将 WriteMaster 从格式整理工具升级为格式 + 内容审阅一体化工作台。

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const { buildFromMarkdown } = require('../src/core/build');
 const { processReview, listBuiltInMasters } = require('../src/core/review');
 const { buildOutputPath } = require('../src/cli');
@@ -479,8 +480,40 @@ ipcMain.handle('writemaster:review-save-report', async (_, content) => {
   return { ok: true, filePath: result.filePath };
 });
 
+// --- Version & Auto-Update ---
+
+ipcMain.handle('writemaster:get-version', () => app.getVersion());
+
+ipcMain.handle('writemaster:check-update', () => {
+  autoUpdater.checkForUpdates().catch(() => {});
+});
+
+ipcMain.handle('writemaster:install-update', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  const send = (type, data) => {
+    const wins = BrowserWindow.getAllWindows();
+    if (wins.length > 0) wins[0].webContents.send('writemaster:update-status', { type, ...data });
+  };
+
+  autoUpdater.on('checking-for-update', () => send('checking'));
+  autoUpdater.on('update-available', (info) => send('available', { version: info.version }));
+  autoUpdater.on('update-not-available', () => send('not-available'));
+  autoUpdater.on('download-progress', (p) => send('progress', { percent: Math.round(p.percent) }));
+  autoUpdater.on('update-downloaded', (info) => send('downloaded', { version: info.version }));
+  autoUpdater.on('error', (err) => send('error', { message: err?.message || String(err) }));
+
+  autoUpdater.checkForUpdates().catch(() => {});
+}
+
 app.whenReady().then(() => {
   createWindow();
+  setupAutoUpdater();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

@@ -30,7 +30,7 @@ jobs:
         run: npm run bundle
 
       - name: Build Electron (setup + portable)
-        run: npx electron-builder --win --publish=never
+        run: npx electron-builder --win --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -40,19 +40,10 @@ jobs:
       - name: Build Rust wrapper
         run: cargo build --manifest-path rust-wrapper/Cargo.toml --release
 
-      - name: Collect artifacts
-        shell: bash
-        run: |
-          mkdir -p release-artifacts
-          cp electron-dist/WriteMaster-setup-*.exe release-artifacts/ 2>/dev/null || true
-          cp electron-dist/WriteMaster-portable-*.exe release-artifacts/ 2>/dev/null || true
-          cp rust-wrapper/target/release/writemaster-rs.exe release-artifacts/ 2>/dev/null || true
-          ls -la release-artifacts/
-
-      - name: Upload to Release
+      - name: Upload Rust artifact to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-artifacts/*
+          files: rust-wrapper/target/release/writemaster-rs.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,7 +1,11 @@
 {
   "name": "writemaster",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Unified DOCX formatting workflow with CLI, Node single-file, Electron, and Rust wrappers.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process"
+  },
   "type": "commonjs",
   "bin": {
     "writemaster": "src/cli.js"
@@ -57,6 +61,7 @@
     }
   },
   "dependencies": {
+    "electron-updater": "^6.8.3",
     "marked": "^18.0.4",
     "pizzip": "^3.2.0",
     "sql.js": "^1.14.1",

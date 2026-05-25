@@ -89,4 +89,17 @@ contextBridge.exposeInMainWorld('writemaster', {
   onReviewError(callback) {
     ipcRenderer.on('writemaster:review-stream-error', (_, err) => callback(err));
   },
+  // Version & update
+  getVersion() {
+    return ipcRenderer.invoke('writemaster:get-version');
+  },
+  checkUpdate() {
+    return ipcRenderer.invoke('writemaster:check-update');
+  },
+  installUpdate() {
+    return ipcRenderer.invoke('writemaster:install-update');
+  },
+  onUpdateStatus(callback) {
+    ipcRenderer.on('writemaster:update-status', (_, data) => callback(data));
+  },
 });
