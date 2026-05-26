@@ -93,6 +93,11 @@ const viewMeta = {
     mode: '审阅',
     type: 'AI',
   },
+  'help-view': {
+    title: '帮助',
+    mode: '帮助',
+    type: '信息',
+  },
 };
 
 const el = {

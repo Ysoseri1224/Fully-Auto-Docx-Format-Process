@@ -1,6 +1,6 @@
 {
   "name": "writemaster",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "Unified DOCX formatting workflow with CLI, Node single-file, Electron, and Rust wrappers.",
   "repository": {
     "type": "git",
