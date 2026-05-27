@@ -21,6 +21,8 @@
 
 ---
 
+![WriteMaster 界面预览](ref/show.png)
+
 ## 快速开始（30 秒）
 
 ```powershell
