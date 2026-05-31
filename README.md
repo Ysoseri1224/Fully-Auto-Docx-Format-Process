@@ -12,7 +12,7 @@
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg" />
   <a href="https://doi.org/10.5281/zenodo.20474052"><img alt="DOI" src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20474052-blue" /></a>
   <img alt="Node" src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.6.2-blue" />
+  <img alt="Version" src="https://img.shields.io/github/package-json/v/Ysoseri1224/Fully-Auto-Docx-Format-Process" />
 </p>
 
 <p align="center">
