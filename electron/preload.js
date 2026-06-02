@@ -102,4 +102,26 @@ contextBridge.exposeInMainWorld('writemaster', {
   onUpdateStatus(callback) {
     ipcRenderer.on('writemaster:update-status', (_, data) => callback(data));
   },
+  // Comment module
+  commentExtract(params) {
+    return ipcRenderer.invoke('writemaster:comment-extract', params);
+  },
+  commentInsert(params) {
+    return ipcRenderer.invoke('writemaster:comment-insert', params);
+  },
+  commentDelete(params) {
+    return ipcRenderer.invoke('writemaster:comment-delete', params);
+  },
+  commentEdit(params) {
+    return ipcRenderer.invoke('writemaster:comment-edit', params);
+  },
+  commentBatchDelete(params) {
+    return ipcRenderer.invoke('writemaster:comment-batch-delete', params);
+  },
+  commentScanMarkers(params) {
+    return ipcRenderer.invoke('writemaster:comment-scan-markers', params);
+  },
+  commentConvertMarkers(params) {
+    return ipcRenderer.invoke('writemaster:comment-convert-markers', params);
+  },
 });

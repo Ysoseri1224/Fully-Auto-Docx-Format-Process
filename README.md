@@ -47,6 +47,7 @@ node src/cli.js --md ./test/your-file.md --master-id review-master
 | **Markdown → DOCX** | Pandoc 转换 + OOXML 母版样式应用 |
 | **DOCX 整理输出** | 对已有 DOCX 进行样式覆盖、段落分类、编号重排 |
 | **AI 文稿审阅** | 上传 .md/.docx → 选择审阅技能（多选）→ AI 流式生成审阅报告 → 导出 .md |
+| **文稿批注** | 交互式 DOCX 批注：选中文本插入/编辑/删除批注，批量操作，ref 标记自动转化 |
 | **多母版支持** | 内置 `review-master`、`chapter10-monograph`、`graduate-thesis`，支持自定义外部母版 |
 | **审阅技能库** | ContRev 内置：去AI痕迹审阅、学术润色（English）、学术写作（English） |
 | **CC Switch 集成** | 自动读取本地 CC Switch 数据库获取 API 配置，支持 Claude + OpenAI 兼容格式，零配置即用 |
@@ -59,7 +60,7 @@ node src/cli.js --md ./test/your-file.md --master-id review-master
 | **模板提取工作台** | Electron 内可视化提取母版结构，右键标注语义角色，自动聚类临时样式 |
 | **Profile 配置** | 将样式映射保存为可复用配置，支持导入/导出 JSON |
 | **单文件 Bundle** | 内嵌母版 base64 的独立 `.cjs` 文件，无需 `node_modules` |
-| **Electron 桌面** | 四视图 Workbench（应用任务 / 模板提取 / Profile 配置 / 文稿审阅），Word 风格蓝白 UI，便携版 EXE |
+| **Electron 桌面** | 五视图 Workbench（应用任务 / 模板提取 / Profile 配置 / 文稿审阅 / 文稿批注），Word 风格蓝白 UI，便携版 EXE |
 | **Rust CLI 包装** | 零依赖的薄包装层，调用 Node 核心 |
 
 ---

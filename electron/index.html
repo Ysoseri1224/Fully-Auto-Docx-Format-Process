@@ -437,6 +437,32 @@
       .md-rendered li { margin: 4px 0; }
       .md-rendered hr { border: none; border-top: 1px solid var(--line); margin: 20px 0; }
       .review-streaming-indicator { display: inline-block; padding: 4px 10px; background: var(--accent); color: #fff; border-radius: 4px; font-size: 12px; margin-bottom: 12px; }
+      /* Comment module */
+      .comment-toolbar { position: absolute; z-index: 100; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); font-size: 13px; cursor: pointer; color: var(--accent); font-weight: 600; user-select: none; }
+      .comment-toolbar:hover { background: var(--accent-soft); }
+      .comment-highlight { background: rgba(43, 87, 151, 0.12); border-bottom: 2px solid var(--accent); cursor: pointer; }
+      .comment-highlight:hover { background: rgba(43, 87, 151, 0.22); }
+      .comment-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+      .comment-panel-header { padding: 16px; border-bottom: 1px solid var(--line); font-weight: 600; font-size: 14px; flex-shrink: 0; }
+      .comment-list { flex: 1; overflow-y: auto; padding: 12px; min-height: 0; }
+      .comment-item { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: background 0.12s; }
+      .comment-item:hover { background: var(--blue-soft); }
+      .comment-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+      .comment-item-author { font-weight: 600; font-size: 12px; }
+      .comment-item-date { font-size: 11px; color: var(--muted); }
+      .comment-item-delete { margin-left: auto; opacity: 0; border: none; background: none; color: var(--error); cursor: pointer; font-size: 16px; transition: opacity 0.15s; }
+      .comment-item:hover .comment-item-delete { opacity: 1; }
+      .comment-item-body { font-size: 13px; line-height: 1.5; white-space: pre-wrap; max-height: 80px; overflow: hidden; color: var(--ink); }
+      .comment-editor { border-top: 1px solid var(--line); padding: 12px; }
+      .comment-editor-hint { font-size: 13px; color: var(--muted); text-align: center; padding: 8px 0; }
+      .comment-editor-selection { font-size: 12px; color: var(--muted); margin-bottom: 8px; max-height: 40px; overflow: hidden; border-left: 3px solid var(--accent); padding-left: 8px; }
+      .comment-editor textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 13px; font-family: inherit; min-height: 60px; max-height: 200px; }
+      .comment-editor-footer { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+      .comment-editor-footer input { flex: 1; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; }
+      .comment-editor-actions { display: flex; gap: 6px; }
+      .comment-editor-actions .button { font-size: 12px; padding: 5px 12px; }
+      .comment-flash { animation: commentFlash 1s ease; }
+      @keyframes commentFlash { 0%, 100% { background: rgba(43,87,151,0.12); } 50% { background: rgba(43,87,151,0.35); } }
     </style>
   </head>
   <body>
@@ -461,6 +487,10 @@
           <div class="nav-item" data-view-target="review-view">
             <div class="nav-title">文稿审阅</div>
             <div class="nav-sub">AI 辅助学术文稿审阅</div>
+          </div>
+          <div class="nav-item" data-view-target="comment-view">
+            <div class="nav-title">文稿批注</div>
+            <div class="nav-sub">交互式 DOCX 批注插入</div>
           </div>
           <div class="nav-item" data-view-target="help-view">
             <div class="nav-title">帮助</div>
@@ -501,6 +531,7 @@
             <button class="tab" data-view-target="template-view">模板提取</button>
             <button class="tab" data-view-target="config-view">Profile 配置</button>
             <button class="tab" data-view-target="review-view">文稿审阅</button>
+            <button class="tab" data-view-target="comment-view">文稿批注</button>
             <button class="tab" data-view-target="help-view">帮助</button>
           </div>
           <div class="tag" id="toolbarMasterTag">当前母版：review-master</div>
@@ -762,6 +793,28 @@
             </div>
           </section>
 
+          <section class="view" id="comment-view">
+            <div style="display:flex;flex-direction:column;height:100%;position:relative;">
+              <div id="comment-upload" style="text-align:center;padding:60px 40px;">
+                <h3 style="margin:0 0 8px;font-weight:600;font-size:16px;">文稿批注</h3>
+                <div class="muted" style="margin:12px 0;">选择 DOCX 文件以开始批注</div>
+                <button class="button" id="commentPickFile">选择文件</button>
+                <div id="commentFileName" class="muted" style="margin-top:12px;font-size:12px;"></div>
+              </div>
+              <div id="comment-result" style="display:none;flex:1;min-height:0;flex-direction:column;">
+                <div id="comment-result-toolbar" style="display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--line);flex-shrink:0;">
+                  <span id="commentFileLabel" class="muted" style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                  <span class="muted" style="font-size:11px;">批注直接写入源文件</span>
+                  <button class="button secondary" id="commentReloadBtn" style="font-size:12px;padding:4px 10px;">刷新</button>
+                </div>
+                <div style="flex:1;min-height:0;overflow-y:auto;padding:24px;position:relative;">
+                  <div id="commentPreview" class="block-preview"></div>
+                  <div class="comment-toolbar" id="commentToolbar" style="display:none;">+ 批注</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section class="view" id="help-view">
             <div style="max-width:680px;margin:0 auto;padding:32px 24px;">
               <h2 style="margin:0 0 24px;font-size:18px;font-weight:600;">帮助</h2>
@@ -804,7 +857,31 @@
         </div>
       </main>
 
-      <aside class="inspector">
+      <aside class="inspector comment-inspector" id="commentInspector" style="display:none;">
+        <div class="comment-panel">
+          <div class="comment-panel-header" style="display:flex;align-items:center;gap:8px;">
+            <span style="flex:1;">共 <span id="commentCount">0</span> 条批注</span>
+            <button class="button secondary" id="commentBatchDeleteBtn" style="font-size:11px;padding:2px 8px;display:none;">删除选中</button>
+          </div>
+          <div class="comment-list" id="commentList"></div>
+          <div class="comment-editor" id="commentEditor">
+            <div class="comment-editor-hint" id="commentEditorHint">选中文本后可添加批注</div>
+            <div class="comment-editor-form" id="commentEditorForm" style="display:none;">
+              <div class="comment-editor-selection" id="commentEditorSelection"></div>
+              <textarea id="commentTextarea" placeholder="输入批注内容..." rows="3"></textarea>
+              <div class="comment-editor-footer">
+                <input id="commentAuthorInput" type="text" placeholder="作者" value="校对" />
+                <div class="comment-editor-actions">
+                  <button class="button secondary" id="commentCancelBtn">取消</button>
+                  <button class="button" id="commentInsertBtn">确认插入</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <aside class="inspector" id="mainInspector">
         <div class="inspector-head">
           <div class="seg" id="inspectorTabs">
             <span class="active" data-tab-target="tab-state">当前状态</span>

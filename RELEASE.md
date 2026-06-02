@@ -1,5 +1,28 @@
 # Release Notes
 
+## v0.7.0
+
+新增「文稿批注」模块，将 WriteMaster 从格式整理 + 审阅工具升级为可直接操作 DOCX 批注的交互式工作台。
+
+### 新功能：文稿批注
+
+Electron 工作台新增顶层视图「文稿批注」，完整工作流：
+
+1. **加载 DOCX** — 选择目标文件，Run 级别渲染文档内容
+2. **选中文本插入批注** — 浮动工具栏 → 输入批注内容 → 写入 OOXML comment
+3. **批注编辑** — 点击编辑按钮修改已有批注内容
+4. **按位置排序** — 右侧批注列表按文稿出现顺序排列
+5. **批量删除** — 勾选多条批注一键删除
+6. **Ref 标记自动转化** — 检测 `<!-- start:ref:xxx -->...<!-- ref:xxx -->` 标记对，弹出复选框对话框（默认全选），确认后移除标记并生成仅标题的批注占位
+
+### 技术实现
+
+- `src/core/comment.js` — insertComment / deleteComment / editComment / batchDeleteComments / scanRefMarkers / convertRefMarkers
+- 批注直接写回源文件（无另存为），UI 显著提示用户
+- 跨段落批注支持：commentRangeStart/End 正确分布在不同段落
+
+---
+
 ## v0.6.2
 
 ### 自动更新

@@ -1091,6 +1091,206 @@ function extractBlocks(inputPath) {
   };
 }
 
+function extractRunsFromParagraph(pEl) {
+  const runs = [];
+  let charOffset = 0;
+  for (let c = pEl.firstChild; c; c = c.nextSibling) {
+    if (c.nodeType !== 1) continue;
+    if (c.localName === 'r' && (!c.prefix || c.prefix === 'w')) {
+      let text = '';
+      for (let rc = c.firstChild; rc; rc = rc.nextSibling) {
+        if (rc.nodeType === 1 && rc.localName === 't' && (!rc.prefix || rc.prefix === 'w')) {
+          text += rc.textContent || '';
+        }
+      }
+      if (text) {
+        runs.push({ text, charOffset });
+        charOffset += text.length;
+      }
+    } else if (c.localName === 'hyperlink') {
+      for (let hc = c.firstChild; hc; hc = hc.nextSibling) {
+        if (hc.nodeType === 1 && hc.localName === 'r') {
+          let text = '';
+          for (let rc = hc.firstChild; rc; rc = rc.nextSibling) {
+            if (rc.nodeType === 1 && rc.localName === 't') {
+              text += rc.textContent || '';
+            }
+          }
+          if (text) {
+            runs.push({ text, charOffset });
+            charOffset += text.length;
+          }
+        }
+      }
+    }
+  }
+  return runs;
+}
+
+function parseExistingComments(zip) {
+  const xml = getXml(zip, 'word/comments.xml');
+  if (!xml) return [];
+  const doc = parseXml(xml);
+  const commentEls = doc.getElementsByTagNameNS(W_NS, 'comment');
+  const comments = [];
+  for (let i = 0; i < commentEls.length; i++) {
+    const el = commentEls[i];
+    const id = el.getAttribute('w:id');
+    const author = el.getAttribute('w:author') || '';
+    const date = el.getAttribute('w:date') || '';
+    let text = '';
+    const tEls = el.getElementsByTagNameNS(W_NS, 't');
+    for (let j = 0; j < tEls.length; j++) {
+      if (j > 0) text += '\n';
+      text += tEls[j].textContent || '';
+    }
+    comments.push({ id, author, date, text });
+  }
+  return comments;
+}
+
+function extractCommentRanges(doc) {
+  const body = doc.getElementsByTagNameNS(W_NS, 'body')[0];
+  if (!body) return [];
+  const starts = {};
+  const ends = {};
+  let paraIdx = 0;
+
+  for (let child = body.firstChild; child; child = child.nextSibling) {
+    if (child.nodeType !== 1 || child.localName !== 'p') continue;
+    const p = child;
+    let charPos = 0;
+    for (let c = p.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType !== 1) continue;
+      if (c.localName === 'commentRangeStart' && (!c.prefix || c.prefix === 'w')) {
+        const cid = c.getAttribute('w:id');
+        if (cid) starts[cid] = { paraIdx, charOffset: charPos };
+      } else if (c.localName === 'commentRangeEnd' && (!c.prefix || c.prefix === 'w')) {
+        const cid = c.getAttribute('w:id');
+        if (cid) ends[cid] = { paraIdx, charOffset: charPos };
+      } else if (c.localName === 'r' && (!c.prefix || c.prefix === 'w')) {
+        for (let rc = c.firstChild; rc; rc = rc.nextSibling) {
+          if (rc.nodeType === 1 && rc.localName === 't') {
+            charPos += (rc.textContent || '').length;
+          }
+        }
+      } else if (c.localName === 'hyperlink') {
+        for (let hc = c.firstChild; hc; hc = hc.nextSibling) {
+          if (hc.nodeType === 1 && hc.localName === 'r') {
+            for (let rc = hc.firstChild; rc; rc = rc.nextSibling) {
+              if (rc.nodeType === 1 && rc.localName === 't') {
+                charPos += (rc.textContent || '').length;
+              }
+            }
+          }
+        }
+      }
+    }
+    paraIdx++;
+  }
+
+  const ranges = [];
+  for (const cid of Object.keys(starts)) {
+    const s = starts[cid];
+    const e = ends[cid] || { paraIdx: s.paraIdx, charOffset: -1 };
+    ranges.push({
+      commentId: cid,
+      startParaIdx: s.paraIdx,
+      startCharOffset: s.charOffset,
+      endParaIdx: e.paraIdx,
+      endCharOffset: e.charOffset,
+    });
+  }
+  return ranges;
+}
+
+function extractBlocksWithRuns(inputPath) {
+  const resolved = inputPath;
+  if (!fs.existsSync(resolved)) {
+    throw new Error(`File not found: ${resolved}`);
+  }
+
+  const zip = loadDocx(resolved);
+  const doc = parseXml(getXml(zip, 'word/document.xml'));
+  const styleMap = buildStyleMap(zip);
+  const body = doc.getElementsByTagNameNS(W_NS, 'body')[0];
+
+  if (!body) {
+    return { blocks: [], comments: [], ranges: [], styleList: [], documentSectPr: null };
+  }
+
+  const docDefaults = {
+    rPr: styleMap.docDefaultsRpr || null,
+    pPr: styleMap.docDefaultsPpr || null,
+  };
+
+  const relMap = buildImageRelMap(zip);
+  const numberingMap = buildNumberingMap(zip);
+  const styleNumPrMap = buildStyleNumPrMap(styleMap.stylesDoc);
+  const numCounters = {};
+  const children = childArray(body);
+  const blocks = [];
+  let blockIndex = 0;
+  let paraIdx = 0;
+
+  for (const child of children) {
+    if (child.nodeType !== 1) continue;
+
+    if (child.localName === 'p') {
+      const hasDrawings = child.getElementsByTagNameNS(DRAWING_NS, 'inline').length ||
+                          child.getElementsByTagNameNS(DRAWING_NS, 'anchor').length;
+      const picts = child.getElementsByTagNameNS(W_NS, 'pict');
+      let hasVmlImages = false;
+      for (let pi = 0; pi < picts.length; pi++) {
+        if (picts[pi].getElementsByTagNameNS('urn:schemas-microsoft-com:vml', 'imagedata').length) {
+          hasVmlImages = true;
+          break;
+        }
+      }
+
+      if (hasDrawings) {
+        const imgBlocks = extractImagesFromParagraph(child, blockIndex, relMap, zip);
+        for (const img of imgBlocks) {
+          blocks.push(img);
+          blockIndex++;
+        }
+      }
+      if (hasVmlImages) {
+        const vmlBlocks = extractVmlImagesFromParagraph(child, blockIndex, relMap, zip);
+        for (const img of vmlBlocks) {
+          blocks.push(img);
+          blockIndex++;
+        }
+      }
+
+      const text = getParagraphText(child);
+      if (text || (!hasDrawings && !hasVmlImages)) {
+        const block = extractParagraphBlock(child, blockIndex, styleMap, docDefaults, styleNumPrMap);
+        resolveBlockNumbering(block, numberingMap, numCounters);
+        block._paraIdx = paraIdx;
+        block.runs = extractRunsFromParagraph(child);
+        blocks.push(block);
+        blockIndex++;
+      }
+      paraIdx++;
+    } else if (child.localName === 'tbl') {
+      blocks.push(extractTableBlock(child, blockIndex, styleMap));
+      blockIndex++;
+    }
+  }
+
+  const comments = parseExistingComments(zip);
+  const ranges = extractCommentRanges(doc);
+
+  return {
+    blocks,
+    comments,
+    ranges,
+    styleList: extractStylesSummary(zip),
+    documentSectPr: parseSectPr(getChildEl(body, W_NS, 'sectPr')),
+  };
+}
+
 /**
  * Extract a summary of all styles defined in the DOCX.
  */
@@ -1246,6 +1446,7 @@ function generateProfile(blocks, blockRoles, styleList, profileName, sourceTempl
 
 module.exports = {
   extractBlocks,
+  extractBlocksWithRuns,
   extractParagraphBlock,
   extractFormat,
   buildFormatFingerprint,

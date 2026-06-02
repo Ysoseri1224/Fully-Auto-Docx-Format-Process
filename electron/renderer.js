@@ -48,6 +48,14 @@ const state = {
   reviewStreaming: false,
   reviewStreamChunks: '',
   reviewReportMarkdown: '',
+  // Comment view state
+  commentFilePath: null,
+  commentBlocks: [],
+  comments: [],
+  commentRanges: [],
+  pendingAnchor: null,
+  commentAuthor: localStorage.getItem('commentAuthor') || '校对',
+  editingCommentId: null,
 };
 
 const CUSTOM_MASTER_ID = '__custom__';
@@ -97,6 +105,11 @@ const viewMeta = {
     title: '帮助',
     mode: '帮助',
     type: '信息',
+  },
+  'comment-view': {
+    title: '文稿批注',
+    mode: '批注',
+    type: '交互',
   },
 };
 
@@ -303,6 +316,11 @@ function renderVisibility() {
   const showCustom = isCustomMasterSelected();
   el.customMasterRow.classList.toggle('hidden', !showCustom);
   el.chooseMasterFile.classList.toggle('hidden', !showCustom);
+  const isCommentView = state.activeView === 'comment-view';
+  const mainInspector = document.getElementById('mainInspector');
+  const commentInspector = document.getElementById('commentInspector');
+  if (mainInspector) mainInspector.style.display = isCommentView ? 'none' : '';
+  if (commentInspector) commentInspector.style.display = isCommentView ? '' : 'none';
 }
 
 function renderFormValues() {
@@ -1046,6 +1064,7 @@ function render() {
   renderProfileEditor();
   renderProfileSelect();
   renderRecentFiles();
+  renderCommentView();
   // Disable run buttons during processing
   const busy = state.runState === 'running';
   if (el.run) el.run.disabled = busy;
@@ -1674,8 +1693,593 @@ if (window.writemaster.onReviewError) {
   });
 }
 
+// --- Comment Module ---
+
+function renderCommentView() {
+  const uploadEl = document.getElementById('comment-upload');
+  const resultEl = document.getElementById('comment-result');
+  if (!uploadEl || !resultEl) return;
+  if (state.activeView !== 'comment-view') return;
+
+  if (state.commentFilePath && state.commentBlocks.length) {
+    uploadEl.style.display = 'none';
+    resultEl.style.display = 'flex';
+    const fileLabel = document.getElementById('commentFileLabel');
+    if (fileLabel) fileLabel.textContent = state.commentFilePath.split(/[\\/]/).pop();
+    renderCommentPreview();
+    renderCommentList();
+  } else {
+    uploadEl.style.display = '';
+    resultEl.style.display = 'none';
+  }
+}
+
+function renderCommentPreview() {
+  const container = document.getElementById('commentPreview');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (const block of state.commentBlocks) {
+    const div = document.createElement('div');
+    div.className = 'block';
+    div.dataset.blockId = block.id;
+    div.dataset.paraIdx = String(block._paraIdx != null ? block._paraIdx : '');
+
+    if (block.type === 'paragraph' && block.runs && block.runs.length) {
+      const numPrefix = block.numbering && block.numbering.displayText ? block.numbering.displayText + ' ' : '';
+      if (numPrefix) {
+        const numSpan = document.createElement('span');
+        numSpan.textContent = numPrefix;
+        div.appendChild(numSpan);
+      }
+      for (const run of block.runs) {
+        const span = document.createElement('span');
+        span.dataset.paraIdx = String(block._paraIdx);
+        span.dataset.charOffset = String(run.charOffset);
+        span.textContent = run.text;
+        div.appendChild(span);
+      }
+    } else if (block.type === 'table' && block.rows && block.rows.length) {
+      div.classList.add('table');
+      const table = document.createElement('table');
+      table.className = 'block-table';
+      block.rows.forEach((row, ri) => {
+        const tr = document.createElement('tr');
+        row.forEach(cell => {
+          const td = document.createElement(ri === 0 ? 'th' : 'td');
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+      });
+      div.appendChild(table);
+    } else {
+      div.textContent = block.text || '(空段落)';
+    }
+
+    if (block.type === 'paragraph' && block.format && block.format.effective) {
+      const eff = block.format.effective;
+      if (eff.fontFamily) div.style.fontFamily = eff.fontFamily + ', serif';
+      if (eff.fontSizePt) div.style.fontSize = eff.fontSizePt + 'pt';
+      if (eff.bold) div.style.fontWeight = '700';
+      if (eff.italic) div.style.fontStyle = 'italic';
+      if (eff.align) {
+        const alignMap = { left: 'left', right: 'right', center: 'center', both: 'justify', distribute: 'justify' };
+        div.style.textAlign = alignMap[eff.align] || 'left';
+      }
+      if (eff.firstLineIndentChars > 0) div.style.textIndent = eff.firstLineIndentChars + 'em';
+      if (eff.leftIndentChars > 0) div.style.paddingLeft = eff.leftIndentChars + 'em';
+    }
+
+    container.appendChild(div);
+  }
+
+  renderCommentHighlights();
+}
+
+function renderCommentHighlights() {
+  const container = document.getElementById('commentPreview');
+  if (!container) return;
+
+  for (const range of state.commentRanges) {
+    for (let pi = range.startParaIdx; pi <= range.endParaIdx; pi++) {
+      const spans = container.querySelectorAll(`span[data-para-idx="${pi}"]`);
+      for (const span of spans) {
+        const offset = parseInt(span.dataset.charOffset, 10);
+        if (isNaN(offset)) continue;
+        const spanEnd = offset + span.textContent.length;
+
+        let inRange = false;
+        if (pi > range.startParaIdx && pi < range.endParaIdx) {
+          inRange = true;
+        } else if (pi === range.startParaIdx && pi === range.endParaIdx) {
+          const rEnd = range.endCharOffset < 0 ? Infinity : range.endCharOffset;
+          inRange = spanEnd > range.startCharOffset && offset < rEnd;
+        } else if (pi === range.startParaIdx) {
+          inRange = spanEnd > range.startCharOffset;
+        } else if (pi === range.endParaIdx) {
+          const rEnd = range.endCharOffset < 0 ? Infinity : range.endCharOffset;
+          inRange = offset < rEnd;
+        }
+
+        if (inRange) {
+          span.classList.add('comment-highlight');
+          span.dataset.commentId = range.commentId;
+        }
+      }
+    }
+  }
+}
+
+function sortCommentsByPosition(comments) {
+  const rangeMap = {};
+  for (const r of state.commentRanges) {
+    rangeMap[r.commentId] = r;
+  }
+  return [...comments].sort((a, b) => {
+    const ra = rangeMap[a.id];
+    const rb = rangeMap[b.id];
+    if (!ra && !rb) return 0;
+    if (!ra) return 1;
+    if (!rb) return -1;
+    if (ra.startParaIdx !== rb.startParaIdx) return ra.startParaIdx - rb.startParaIdx;
+    return ra.startCharOffset - rb.startCharOffset;
+  });
+}
+
+function renderCommentList() {
+  const list = document.getElementById('commentList');
+  const countEl = document.getElementById('commentCount');
+  if (!list) return;
+  list.innerHTML = '';
+  if (countEl) countEl.textContent = state.comments.length;
+
+  const sorted = sortCommentsByPosition(state.comments);
+
+  if (sorted.length > 0) {
+    const batchBar = document.createElement('div');
+    batchBar.className = 'comment-batch-bar';
+    const selectAll = document.createElement('label');
+    selectAll.className = 'comment-select-all';
+    selectAll.innerHTML = '<input type="checkbox" id="commentSelectAll" /> 全选';
+    const batchDelBtn = document.createElement('button');
+    batchDelBtn.className = 'button secondary comment-batch-delete';
+    batchDelBtn.textContent = '删除选中';
+    batchDelBtn.id = 'commentBatchDeleteBtn';
+    batchBar.appendChild(selectAll);
+    batchBar.appendChild(batchDelBtn);
+    list.appendChild(batchBar);
+
+    selectAll.querySelector('input').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      list.querySelectorAll('.comment-item-checkbox').forEach(cb => { cb.checked = checked; });
+    });
+    batchDelBtn.addEventListener('click', handleBatchDelete);
+  }
+
+  for (const comment of sorted) {
+    const item = document.createElement('div');
+    item.className = 'comment-item';
+    item.dataset.commentId = comment.id;
+
+    const head = document.createElement('div');
+    head.className = 'comment-item-head';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'comment-item-checkbox';
+    checkbox.dataset.commentId = comment.id;
+    checkbox.addEventListener('click', (e) => e.stopPropagation());
+
+    const authorSpan = document.createElement('span');
+    authorSpan.className = 'comment-item-author';
+    authorSpan.textContent = comment.author || '未知';
+    const dateSpan = document.createElement('span');
+    dateSpan.className = 'comment-item-date';
+    dateSpan.textContent = comment.date ? comment.date.slice(0, 10) : '';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'comment-item-edit';
+    editBtn.title = '编辑';
+    editBtn.textContent = '✎';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'comment-item-delete';
+    delBtn.title = '删除';
+    delBtn.textContent = '×';
+
+    head.appendChild(checkbox);
+    head.appendChild(authorSpan);
+    head.appendChild(dateSpan);
+    head.appendChild(editBtn);
+    head.appendChild(delBtn);
+
+    const body = document.createElement('div');
+    body.className = 'comment-item-body';
+    body.textContent = comment.text || '';
+
+    item.appendChild(head);
+    item.appendChild(body);
+
+    item.addEventListener('click', () => scrollToComment(comment.id));
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startEditComment(comment);
+    });
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      confirmDeleteComment(comment.id);
+    });
+
+    list.appendChild(item);
+  }
+}
+
+function scrollToComment(commentId) {
+  const container = document.getElementById('commentPreview');
+  if (!container) return;
+  const span = container.querySelector(`span[data-comment-id="${commentId}"]`);
+  if (!span) return;
+  span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  span.classList.add('comment-flash');
+  setTimeout(() => span.classList.remove('comment-flash'), 1000);
+}
+
+async function confirmDeleteComment(commentId) {
+  if (!confirm('确定删除该批注？此操作将修改 DOCX 文件。')) return;
+  const result = await window.writemaster.commentDelete({
+    filePath: state.commentFilePath,
+    commentId,
+  });
+  if (result.ok) {
+    await reloadComments();
+    showToast('批注已删除');
+  } else {
+    showToast('删除失败: ' + result.error);
+  }
+}
+
+async function handleBatchDelete() {
+  const checkboxes = document.querySelectorAll('.comment-item-checkbox:checked');
+  if (!checkboxes.length) { showToast('未选中任何批注'); return; }
+  if (!confirm(`确定删除选中的 ${checkboxes.length} 条批注？`)) return;
+  let ok = 0, fail = 0;
+  for (const cb of checkboxes) {
+    const result = await window.writemaster.commentDelete({
+      filePath: state.commentFilePath,
+      commentId: cb.dataset.commentId,
+    });
+    if (result.ok) ok++; else fail++;
+  }
+  await reloadComments();
+  showToast(`已删除 ${ok} 条${fail ? '，失败 ' + fail + ' 条' : ''}`);
+}
+
+function startEditComment(comment) {
+  const form = document.getElementById('commentEditorForm');
+  const hint = document.getElementById('commentEditorHint');
+  const selEl = document.getElementById('commentEditorSelection');
+  const textarea = document.getElementById('commentTextarea');
+  const insertBtn = document.getElementById('commentInsertBtn');
+  if (!form || !hint || !textarea || !insertBtn) return;
+
+  state.pendingAnchor = null;
+  state._editingCommentId = comment.id;
+
+  if (selEl) selEl.textContent = '编辑批注 #' + comment.id;
+  textarea.value = comment.text || '';
+  hint.style.display = 'none';
+  form.style.display = '';
+  insertBtn.textContent = '保存修改';
+  textarea.focus();
+}
+
+async function handleEditSave() {
+  const textarea = document.getElementById('commentTextarea');
+  const text = textarea ? textarea.value.trim() : '';
+  if (!text || !state._editingCommentId) return;
+
+  const result = await window.writemaster.commentEdit({
+    filePath: state.commentFilePath,
+    commentId: state._editingCommentId,
+    newText: text,
+  });
+
+  if (result.ok) {
+    cancelEdit();
+    await reloadComments();
+    showToast('批注已更新');
+  } else {
+    showToast('编辑失败: ' + result.error);
+  }
+}
+
+function cancelEdit() {
+  state._editingCommentId = null;
+  const insertBtn = document.getElementById('commentInsertBtn');
+  if (insertBtn) insertBtn.textContent = '确认插入';
+  hideCommentEditor();
+}
+
+async function loadCommentFile() {
+  const picked = await window.writemaster.pickFile('docx');
+  if (!picked) return;
+  state.commentFilePath = picked;
+  const fileNameEl = document.getElementById('commentFileName');
+  if (fileNameEl) fileNameEl.textContent = picked.split(/[\\/]/).pop();
+  await reloadComments();
+  await checkRefMarkers();
+}
+
+async function checkRefMarkers() {
+  if (!state.commentFilePath) return;
+  const result = await window.writemaster.commentScanMarkers({ filePath: state.commentFilePath });
+  if (!result.ok || !result.markers || !result.markers.length) return;
+  showMarkerDialog(result.markers);
+}
+
+function showMarkerDialog(markers) {
+  const existing = document.getElementById('markerDialog');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'markerDialog';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:8px;padding:24px;max-width:480px;width:90%;max-height:70vh;display:flex;flex-direction:column;';
+
+  const title = document.createElement('h3');
+  title.style.cssText = 'margin:0 0 12px;font-size:15px;font-weight:600;';
+  title.textContent = `检测到 ${markers.length} 对 ref 标记，是否转化为批注？`;
+  box.appendChild(title);
+
+  const listWrap = document.createElement('div');
+  listWrap.style.cssText = 'flex:1;min-height:0;overflow-y:auto;margin-bottom:16px;';
+
+  const selectAll = document.createElement('label');
+  selectAll.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;margin-bottom:8px;cursor:pointer;';
+  const saCheckbox = document.createElement('input');
+  saCheckbox.type = 'checkbox';
+  saCheckbox.checked = true;
+  selectAll.appendChild(saCheckbox);
+  selectAll.appendChild(document.createTextNode('全选'));
+  listWrap.appendChild(selectAll);
+
+  const checkboxes = [];
+  for (let i = 0; i < markers.length; i++) {
+    const m = markers[i];
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;padding:4px 0;cursor:pointer;';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = true;
+    cb.dataset.idx = i;
+    checkboxes.push(cb);
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(`[${m.label}] 段落${m.startParaIdx + 1}~${m.endParaIdx + 1}`));
+    listWrap.appendChild(label);
+  }
+
+  saCheckbox.addEventListener('change', () => {
+    for (const cb of checkboxes) cb.checked = saCheckbox.checked;
+  });
+
+  box.appendChild(listWrap);
+
+  const footer = document.createElement('div');
+  footer.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'button secondary';
+  cancelBtn.textContent = '跳过';
+  cancelBtn.addEventListener('click', () => overlay.remove());
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'button';
+  confirmBtn.textContent = '转化选中';
+  confirmBtn.addEventListener('click', async () => {
+    const selected = [];
+    for (const cb of checkboxes) {
+      if (cb.checked) selected.push(markers[parseInt(cb.dataset.idx, 10)]);
+    }
+    if (!selected.length) { overlay.remove(); return; }
+    overlay.remove();
+    const result = await window.writemaster.commentConvertMarkers({
+      filePath: state.commentFilePath,
+      markers: selected,
+      author: state.commentAuthor,
+    });
+    if (result.ok) {
+      await reloadComments();
+      showToast(`已转化 ${selected.length} 条标记为批注`);
+    } else {
+      showToast('转化失败: ' + result.error);
+    }
+  });
+
+  footer.appendChild(cancelBtn);
+  footer.appendChild(confirmBtn);
+  box.appendChild(footer);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+async function reloadComments() {
+  if (!state.commentFilePath) return;
+  const result = await window.writemaster.commentExtract({ filePath: state.commentFilePath });
+  if (result.ok) {
+    state.commentBlocks = result.blocks;
+    state.comments = result.comments;
+    state.commentRanges = result.ranges;
+  } else {
+    showToast('加载失败: ' + result.error);
+  }
+  render();
+}
+
+function getSelectionAnchor() {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) return null;
+
+  const container = document.getElementById('commentPreview');
+  if (!container) return null;
+  if (!container.contains(sel.anchorNode) || !container.contains(sel.focusNode)) return null;
+
+  function findSpanData(node) {
+    let el = node.nodeType === 3 ? node.parentElement : node;
+    while (el && el !== container) {
+      if (el.dataset && el.dataset.charOffset !== undefined && el.dataset.paraIdx !== undefined) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  const startSpan = findSpanData(sel.anchorNode);
+  const endSpan = findSpanData(sel.focusNode);
+  if (!startSpan || !endSpan) return null;
+
+  let startParaIdx = parseInt(startSpan.dataset.paraIdx, 10);
+  let startCharOffset = parseInt(startSpan.dataset.charOffset, 10) + sel.anchorOffset;
+  let endParaIdx = parseInt(endSpan.dataset.paraIdx, 10);
+  let endCharOffset = parseInt(endSpan.dataset.charOffset, 10) + sel.focusOffset;
+
+  if (startParaIdx > endParaIdx || (startParaIdx === endParaIdx && startCharOffset > endCharOffset)) {
+    [startParaIdx, startCharOffset, endParaIdx, endCharOffset] = [endParaIdx, endCharOffset, startParaIdx, startCharOffset];
+  }
+
+  return { startParaIdx, startCharOffset, endParaIdx, endCharOffset };
+}
+
+function positionCommentToolbar() {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) return;
+  const toolbar = document.getElementById('commentToolbar');
+  if (!toolbar) return;
+  const scrollContainer = toolbar.parentElement;
+  if (!scrollContainer) return;
+
+  const range = sel.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  const containerRect = scrollContainer.getBoundingClientRect();
+
+  const top = rect.top - containerRect.top + scrollContainer.scrollTop - 36;
+  const left = rect.left - containerRect.left + rect.width / 2 - 24;
+
+  toolbar.style.display = 'block';
+  toolbar.style.top = Math.max(0, top) + 'px';
+  toolbar.style.left = Math.max(0, left) + 'px';
+}
+
+function hideCommentToolbar() {
+  const toolbar = document.getElementById('commentToolbar');
+  if (toolbar) toolbar.style.display = 'none';
+}
+
+function showCommentEditor(anchor) {
+  state.pendingAnchor = anchor;
+  const form = document.getElementById('commentEditorForm');
+  const hint = document.getElementById('commentEditorHint');
+  const selEl = document.getElementById('commentEditorSelection');
+  const textarea = document.getElementById('commentTextarea');
+  if (!form || !hint) return;
+
+  const sel = window.getSelection();
+  const selectedText = sel ? sel.toString().trim() : '';
+  if (selEl) {
+    selEl.textContent = selectedText.length > 50 ? selectedText.slice(0, 50) + '...' : selectedText;
+  }
+
+  hint.style.display = 'none';
+  form.style.display = '';
+  if (textarea) {
+    textarea.value = '';
+    textarea.focus();
+  }
+}
+
+function hideCommentEditor() {
+  state.pendingAnchor = null;
+  state._editingCommentId = null;
+  const form = document.getElementById('commentEditorForm');
+  const hint = document.getElementById('commentEditorHint');
+  const insertBtn = document.getElementById('commentInsertBtn');
+  if (form) form.style.display = 'none';
+  if (hint) hint.style.display = '';
+  if (insertBtn) insertBtn.textContent = '确认插入';
+}
+
+async function handleCommentInsert() {
+  if (state._editingCommentId) {
+    await handleEditSave();
+    return;
+  }
+  const textarea = document.getElementById('commentTextarea');
+  const authorInput = document.getElementById('commentAuthorInput');
+  const text = textarea ? textarea.value.trim() : '';
+  if (!text || !state.pendingAnchor) return;
+
+  const author = (authorInput ? authorInput.value.trim() : '') || '校对';
+  localStorage.setItem('commentAuthor', author);
+  state.commentAuthor = author;
+
+  const result = await window.writemaster.commentInsert({
+    filePath: state.commentFilePath,
+    anchor: state.pendingAnchor,
+    text,
+    author,
+  });
+
+  if (result.ok) {
+    hideCommentEditor();
+    await reloadComments();
+    showToast('批注已插入');
+  } else {
+    showToast('插入失败: ' + result.error);
+  }
+}
+
+function bindCommentEvents() {
+  const pickBtn = document.getElementById('commentPickFile');
+  if (pickBtn) pickBtn.addEventListener('click', loadCommentFile);
+
+  const toolbar = document.getElementById('commentToolbar');
+  if (toolbar) {
+    toolbar.addEventListener('click', () => {
+      const anchor = getSelectionAnchor();
+      if (!anchor) return;
+      showCommentEditor(anchor);
+      hideCommentToolbar();
+    });
+  }
+
+  const insertBtn = document.getElementById('commentInsertBtn');
+  if (insertBtn) insertBtn.addEventListener('click', handleCommentInsert);
+
+  const cancelBtn = document.getElementById('commentCancelBtn');
+  if (cancelBtn) cancelBtn.addEventListener('click', hideCommentEditor);
+
+  const reloadBtn = document.getElementById('commentReloadBtn');
+  if (reloadBtn) reloadBtn.addEventListener('click', () => reloadComments());
+
+  const batchDelBtn = document.getElementById('commentBatchDeleteBtn');
+  if (batchDelBtn) batchDelBtn.addEventListener('click', handleBatchDelete);
+
+  document.addEventListener('selectionchange', () => {
+    if (state.activeView !== 'comment-view') return;
+    const anchor = getSelectionAnchor();
+    if (anchor) {
+      positionCommentToolbar();
+    } else {
+      hideCommentToolbar();
+    }
+  });
+}
+
 async function init() {
   bindEvents();
+  bindCommentEvents();
   await refreshMasters();
   await refreshProfiles();
   const loaded = await window.writemaster.loadTempStyles();

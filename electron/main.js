@@ -485,6 +485,78 @@ ipcMain.handle('writemaster:review-save-report', async (_, content) => {
 
 ipcMain.handle('writemaster:get-version', () => app.getVersion());
 
+// --- Comment Module ---
+
+ipcMain.handle('writemaster:comment-extract', async (_, { filePath }) => {
+  try {
+    const { extractBlocksWithRuns } = require('../src/core/extract');
+    const result = extractBlocksWithRuns(filePath);
+    return { ok: true, blocks: result.blocks, comments: result.comments, ranges: result.ranges };
+  } catch (error) {
+    return { ok: false, error: error.message, blocks: [], comments: [], ranges: [] };
+  }
+});
+
+ipcMain.handle('writemaster:comment-insert', async (_, { filePath, anchor, text, author }) => {
+  try {
+    const { insertComment } = require('../src/core/comment');
+    const newId = insertComment(filePath, anchor, text, author);
+    return { ok: true, newId };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('writemaster:comment-delete', async (_, { filePath, commentId }) => {
+  try {
+    const { deleteComment } = require('../src/core/comment');
+    deleteComment(filePath, commentId);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('writemaster:comment-scan-markers', async (_, { filePath }) => {
+  try {
+    const { scanRefMarkers } = require('../src/core/comment');
+    const markers = scanRefMarkers(filePath);
+    return { ok: true, markers };
+  } catch (error) {
+    return { ok: false, error: error.message, markers: [] };
+  }
+});
+
+ipcMain.handle('writemaster:comment-convert-markers', async (_, { filePath, markers, author }) => {
+  try {
+    const { convertRefMarkers } = require('../src/core/comment');
+    convertRefMarkers(filePath, markers, author);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('writemaster:comment-edit', async (_, { filePath, commentId, newText }) => {
+  try {
+    const { editComment } = require('../src/core/comment');
+    editComment(filePath, commentId, newText);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('writemaster:comment-batch-delete', async (_, { filePath, commentIds }) => {
+  try {
+    const { batchDeleteComments } = require('../src/core/comment');
+    batchDeleteComments(filePath, commentIds);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
 ipcMain.handle('writemaster:check-update', () => {
   if (autoUpdater) autoUpdater.checkForUpdates().catch(() => {});
 });
