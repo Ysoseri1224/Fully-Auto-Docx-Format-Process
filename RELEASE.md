@@ -1,5 +1,25 @@
 # Release Notes
 
+## v0.7.1
+
+### Bug 修复
+
+修复 Pandoc 调用中的参数拼接错误，该错误会导致包含空格或中文的路径无法正确处理。
+
+**问题描述：**
+- 原实现使用 `--reference-doc=路径` 格式，当路径包含空格/中文时会导致所有参数粘连在一起
+- 错误示例：`--reference-doc=C:\...\master.docxC:\...\temp.docxC:\...\input.md`（所有路径连在一起无空格）
+
+**修复方案：**
+- 改为独立参数形式：`'--reference-doc', resolvedMaster`
+- `execFileSync` 会正确为路径添加引号和转义
+
+**影响范围：**
+- Markdown → DOCX 转换（`--md` 模式）
+- 所有包含中文路径或空格路径的场景
+
+---
+
 ## v0.7.0
 
 新增「文稿批注」模块，将 WriteMaster 从格式整理 + 审阅工具升级为可直接操作 DOCX 批注的交互式工作台。
